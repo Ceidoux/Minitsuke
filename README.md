@@ -37,5 +37,11 @@ Stop PostgreSQL:
 docker compose -f infra/compose.yaml stop
 ```
 
+Remove the PostgreSQL container (preserves the Volume)
+
+```bash
+docker compose -f infra/compose.yaml down
+```
+
 Database data persists in a named Docker volume.
 The credentials in the Compose file are for local development only.
