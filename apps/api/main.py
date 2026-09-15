@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 
 from schemas import SearchResponse
-from search import normalize_query
+from search import find_words, normalize_query
 
 app = FastAPI(title="SmartJisho")
 
@@ -16,4 +16,4 @@ def search(q: str) -> SearchResponse:
             detail=str(error),
         ) from error
 
-    return SearchResponse(query=cleaned_query)
+    return SearchResponse(query=cleaned_query, results=find_words(cleaned_query))
