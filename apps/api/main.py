@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException
 
+from schemas import SearchResponse
 from search import normalize_query
 
 app = FastAPI(title="SmartJisho")
 
 
 @app.get("/api/v1/search")
-def search(q: str) -> dict[str, str]:
+def search(q: str) -> SearchResponse:
     try:
         cleaned_query = normalize_query(q)
     except ValueError as error:
@@ -15,4 +16,4 @@ def search(q: str) -> dict[str, str]:
             detail=str(error),
         ) from error
 
-    return {"query": cleaned_query}
+    return SearchResponse(query=cleaned_query)
