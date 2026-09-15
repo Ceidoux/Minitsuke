@@ -45,3 +45,18 @@ docker compose -f infra/compose.yaml down
 
 Database data persists in a named Docker volume.
 The credentials in the Compose file are for local development only.
+
+Apply database migrations after starting PostgreSQL.
+
+From `apps/api`:
+
+```bash
+uv sync
+uv run alembic upgrade head
+```
+
+Check the current migration revision:
+
+```bash
+uv run alembic current
+```
