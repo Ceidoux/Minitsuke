@@ -9,3 +9,39 @@ I wanted to create something useful to aid my Japanese learning adventure with A
 First Milestone -> Display a Kanji retrieved through FastAPI.
 
 Workflow -> Trunk-based development, using short-lived branches merged into main through pull requests, aswell as feature flags when needed. CI will also be configured and used.
+
+
+## Local database
+
+Prerequisites: Docker Desktop with WSL integration enabled.
+
+Run these commands from the repository root.
+
+Start PostgreSQL:
+
+```bash
+docker compose -f infra/compose.yaml up -d --wait
+```
+
+Open the SQL terminal:
+
+```bash
+docker compose -f infra/compose.yaml exec db psql -U smartjisho -d smartjisho
+```
+
+Exit the SQL terminal with `\q`.
+
+Stop PostgreSQL:
+
+```bash
+docker compose -f infra/compose.yaml stop
+```
+
+Remove the PostgreSQL container (preserves the Volume)
+
+```bash
+docker compose -f infra/compose.yaml down
+```
+
+Database data persists in a named Docker volume.
+The credentials in the Compose file are for local development only.
