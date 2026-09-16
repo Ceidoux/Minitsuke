@@ -1,11 +1,7 @@
 from fastapi.testclient import TestClient
 
-from main import app
 
-client = TestClient(app)
-
-
-def test_written_form_search_returns_entry() -> None:
+def test_written_form_search_returns_entry(client: TestClient) -> None:
     response = client.get(
         "/api/v1/search",
         params={"q": "  食べる  "},
@@ -20,7 +16,7 @@ def test_written_form_search_returns_entry() -> None:
     }
 
 
-def test_reading_search_returns_entry() -> None:
+def test_reading_search_returns_entry(client: TestClient) -> None:
     response = client.get(
         "/api/v1/search",
         params={"q": "がっこう"},
@@ -35,7 +31,7 @@ def test_reading_search_returns_entry() -> None:
     }
 
 
-def test_unmatched_query_returns_empty_results() -> None:
+def test_unmatched_query_returns_empty_results(client: TestClient) -> None:
     response = client.get(
         "/api/v1/search",
         params={"q": "不存在の単語"},
@@ -45,7 +41,7 @@ def test_unmatched_query_returns_empty_results() -> None:
     assert response.json() == {"query": "不存在の単語", "results": []}
 
 
-def test_empty_query() -> None:
+def test_empty_query(client: TestClient) -> None:
     response = client.get(
         "/api/v1/search",
         params={"q": ""},
@@ -55,7 +51,7 @@ def test_empty_query() -> None:
     assert response.json() == {"detail": "Search query must not be empty"}
 
 
-def test_whitespace_only_query() -> None:
+def test_whitespace_only_query(client: TestClient) -> None:
     response = client.get(
         "/api/v1/search",
         params={"q": "   "},
@@ -65,7 +61,7 @@ def test_whitespace_only_query() -> None:
     assert response.json() == {"detail": "Search query must not be empty"}
 
 
-def test_missing_query() -> None:
+def test_missing_query(client: TestClient) -> None:
     response = client.get(
         "/api/v1/search",
     )

@@ -14,7 +14,24 @@ jobs:
     name: Python checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: smartjisho
+          POSTGRES_PASSWORD: local_test_only
+          POSTGRES_DB: smartjisho_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartjisho -d smartjisho_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
+    env:
+      DATABASE_URL: postgresql+psycopg://smartjisho:local_test_only@127.0.0.1:5432/smartjisho_test
+      TEST_DATABASE_URL: postgresql+psycopg://smartjisho:local_test_only@127.0.0.1:5432/smartjisho_test
     defaults:
       run:
         working-directory: apps/api
@@ -38,5 +55,8 @@ jobs:
       - name: Check formatting
         run: uv run --locked ruff format --check .
 
+      - name: Apply database migrations
+        run: uv run --locked alembic upgrade head
+        
       - name: Run tests
         run: uv run --locked pytest

@@ -1,5 +1,8 @@
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from models import Meaning, Word
 from schemas import WordEntry
 from search import find_words, normalize_query
 
@@ -35,8 +38,8 @@ def test_removes_tabs_and_newlines() -> None:
 # FIND_WORDS TESTS
 
 
-def test_finds_entry_with_written_form() -> None:
-    assert find_words("食べる") == [
+def test_finds_entry_with_written_form(db_session: Session) -> None:
+    assert find_words(db_session, "食べる") == [
         WordEntry(
             written_form="食べる",
             reading="たべる",
@@ -45,8 +48,8 @@ def test_finds_entry_with_written_form() -> None:
     ]
 
 
-def test_finds_entry_with_reading() -> None:
-    assert find_words("たべる") == [
+def test_finds_entry_with_reading(db_session: Session) -> None:
+    assert find_words(db_session, "たべる") == [
         WordEntry(
             written_form="食べる",
             reading="たべる",
@@ -55,5 +58,33 @@ def test_finds_entry_with_reading() -> None:
     ]
 
 
-def test_rejects_partial_matching() -> None:
-    assert find_words("食") == []
+def test_rejects_partial_matching(db_session: Session) -> None:
+    assert find_words(db_session, "食") == []
+
+
+def test_groups_meanings_under_one_word(db_session: Session) -> None:
+    word = db_session.scalars(select(Word).where(Word.written_form == "食べる")).one()
+
+    db_session.add(Meaning(word_id=word.id, meaning="to live on"))
+    db_session.flush()
+
+    assert find_words(db_session, "食べる") == [
+        WordEntry(
+            written_form="食べる",
+            reading="たべる",
+            meanings=["to eat", "to live on"],
+        )
+    ]
+
+
+def test_returns_word_without_meanings(db_session: Session) -> None:
+    db_session.add(Word(written_form="猫", reading="ねこ"))
+    db_session.flush()
+
+    assert find_words(db_session, "猫") == [
+        WordEntry(
+            written_form="猫",
+            reading="ねこ",
+            meanings=[],
+        )
+    ]
