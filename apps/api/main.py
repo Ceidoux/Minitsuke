@@ -7,7 +7,7 @@ from database import get_session
 from schemas import SearchResponse
 from search import find_words, normalize_query
 
-app = FastAPI(title="SmartJisho")
+app = FastAPI(title="Minitsuke")
 
 
 @app.get("/api/v1/search")
