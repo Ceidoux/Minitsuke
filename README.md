@@ -60,3 +60,46 @@ Check the current migration revision:
 ```bash
 uv run alembic current
 ```
+
+
+## Run the API
+
+Start PostgreSQL using the instructions above.
+
+From `apps/api`:
+
+```bash
+uv sync --locked --dev
+export DATABASE_URL='postgresql+psycopg://smartjisho:local_dev_only@127.0.0.1:5432/smartjisho'
+uv run alembic upgrade head
+uv run fastapi dev main.py
+```
+
+Open http://127.0.0.1:8000/docs to try the API.
+
+Search reads vocabulary from PostgreSQL. A newly migrated database
+contains no vocabulary, so searches return empty results until data
+is inserted.
+
+## Run tests
+
+Tests use a separate PostgreSQL database.
+
+With PostgreSQL running, create the test database once from the
+repository root:
+
+```bash
+docker compose -f infra/compose.yaml exec db createdb -U smartjisho smartjisho_test
+```
+
+From `apps/api`:
+
+```bash
+export DATABASE_URL='postgresql+psycopg://smartjisho:local_dev_only@127.0.0.1:5432/smartjisho'
+export TEST_DATABASE_URL='postgresql+psycopg://smartjisho:local_dev_only@127.0.0.1:5432/smartjisho_test'
+DATABASE_URL="$TEST_DATABASE_URL" uv run alembic upgrade head
+uv run pytest
+```
+
+The fixtures insert known vocabulary and roll back each test's changes.
+Environment variables must be set again when opening a new terminal.
