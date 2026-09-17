@@ -105,8 +105,9 @@ The fixtures insert known vocabulary and roll back each test's changes.
 Environment variables must be set again when opening a new terminal.
 
 
-# Import JMdict
+## Import JMdict
 
+The file imported must be uncompressed XML, and migrations must already be applied
 To import JMdict,the command must be run from 'apps/api' directory.
 DATABASE_URL selects the target db.
 The whole import uses one transaction; progress remains uncommitted until completion.
@@ -114,4 +115,8 @@ Re-importing updates matching source IDs; it doesn’t remove entries absent fro
 
 Here's the command:
 
+```bash
 uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
+```
+
+Note: search API still uses the original vocabulary tables for now
