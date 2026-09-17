@@ -2,6 +2,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
+
 from jmdict import (
     JmdictEntry,
     JmdictGloss,

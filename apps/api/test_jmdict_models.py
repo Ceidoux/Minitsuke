@@ -1,12 +1,13 @@
 import pytest
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from models import (
     JmdictEntryRecord,
     JmdictReadingRecord,
     JmdictWrittenFormRecord,
 )
-from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 
 def test_entry_stores_multiple_written_forms(db_session: Session):

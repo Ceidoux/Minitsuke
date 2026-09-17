@@ -1,9 +1,10 @@
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from models import Meaning, Word
 from schemas import WordEntry
 from search import find_words, normalize_query
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 # NORMALIZE_QUERY TESTS
 
