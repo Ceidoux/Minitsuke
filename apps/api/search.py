@@ -1,7 +1,6 @@
-from sqlalchemy.orm import Session
-
 from repository import find_word_rows
 from schemas import WordEntry
+from sqlalchemy.orm import Session
 
 
 def normalize_query(query: str) -> str:

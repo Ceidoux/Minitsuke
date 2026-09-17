@@ -1,11 +1,10 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy.orm import Session
-
 from database import get_session
+from fastapi import Depends, FastAPI, HTTPException
 from schemas import SearchResponse
 from search import find_words, normalize_query
+from sqlalchemy.orm import Session
 
 app = FastAPI(title="Minitsuke")
 

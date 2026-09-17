@@ -3,11 +3,10 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
+from models import Meaning, Word
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session
-
-from models import Meaning, Word
 
 
 @pytest.fixture(scope="session")

@@ -1,7 +1,6 @@
+from models import Meaning, Word
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
-
-from models import Meaning, Word
 
 
 def find_word_rows(
