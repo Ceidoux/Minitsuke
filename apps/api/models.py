@@ -57,3 +57,31 @@ class JmdictWrittenFormRecord(Base):
     )
     text: Mapped[str] = mapped_column(Text)
     position: Mapped[int] = mapped_column()
+
+
+class JmdictReadingRecord(Base):
+    __tablename__ = "jmdict_readings"
+    __table_args__ = (
+        UniqueConstraint(
+            "entry_id",
+            "text",
+            name="uq_jmdict_readings_entry_text",
+        ),
+        UniqueConstraint(
+            "entry_id",
+            "position",
+            name="uq_jmdict_readings_entry_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_readings_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entry_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_entries.id", ondelete="CASCADE"),
+    )
+    text: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
+    no_kanji: Mapped[bool] = mapped_column()
