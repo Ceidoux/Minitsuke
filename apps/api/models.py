@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -20,3 +20,40 @@ class Meaning(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     word_id: Mapped[int] = mapped_column(ForeignKey("words.id", ondelete="CASCADE"))
     meaning: Mapped[str] = mapped_column(Text)
+
+
+class JmdictEntryRecord(Base):
+    __tablename__ = "jmdict_entries"
+    __table_args__ = (
+        UniqueConstraint("source_id", name="uq_jmdict_entries_source_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column()
+
+
+class JmdictWrittenFormRecord(Base):
+    __tablename__ = "jmdict_written_forms"
+    __table_args__ = (
+        UniqueConstraint(
+            "entry_id",
+            "text",
+            name="uq_jmdict_written_forms_entry_text",
+        ),
+        UniqueConstraint(
+            "entry_id",
+            "position",
+            name="uq_jmdict_written_forms_entry_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_written_forms_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entry_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_entries.id", ondelete="CASCADE"),
+    )
+    text: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
