@@ -276,3 +276,38 @@ def test_deleting_entry_removes_only_its_readings(db_session: Session):
     remaining_entry_ids = db_session.scalars(select(JmdictReadingRecord.entry_id)).all()
 
     assert remaining_entry_ids == [second.id]
+
+
+@pytest.mark.parametrize("is_common", [False, True])
+def test_entry_preserves_commonness(
+    db_session: Session,
+    is_common: bool,
+):
+    entry = JmdictEntryRecord(
+        source_id=1000001,
+        is_common=is_common,
+    )
+    db_session.add(entry)
+    db_session.flush()
+
+    stored = db_session.scalar(
+        select(JmdictEntryRecord.is_common).where(
+            JmdictEntryRecord.id == entry.id,
+        )
+    )
+
+    assert stored is is_common
+
+
+def test_entry_commonness_defaults_to_false(db_session: Session):
+    entry = JmdictEntryRecord(source_id=1000001)
+    db_session.add(entry)
+    db_session.flush()
+
+    stored = db_session.scalar(
+        select(JmdictEntryRecord.is_common).where(
+            JmdictEntryRecord.id == entry.id,
+        )
+    )
+
+    assert stored is False

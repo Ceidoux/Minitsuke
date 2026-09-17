@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+COMMON_PRIORITY_TAGS = frozenset({"news1", "ichi1", "spec1", "spec2", "gai1"})
+
 
 @dataclass(frozen=True)
 class JmdictGloss:
@@ -31,6 +33,7 @@ class JmdictEntry:
     written_forms: tuple[str, ...]
     readings: tuple[JmdictReading, ...]
     senses: tuple[JmdictSense, ...]
+    is_common: bool = False
 
 
 def parse_entry(element: ET.Element) -> JmdictEntry:
@@ -105,12 +108,17 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
         )
     if not senses:
         raise ValueError("JMdict entry must contain at least one sense")
-
+    is_common = any(
+        node.text in COMMON_PRIORITY_TAGS
+        for path in ("k_ele/ke_pri", "r_ele/re_pri")
+        for node in element.findall(path)
+    )
     return JmdictEntry(
         source_id=source_id,
         written_forms=written_forms,
         readings=readings,
         senses=tuple(senses),
+        is_common=is_common,
     )
 
 

@@ -353,6 +353,7 @@ def test_caller_can_roll_back_replacement(
 
     replacement = replace(
         parsed_entry,
+        is_common=True,
         senses=(
             JmdictSense(
                 glosses=(JmdictGloss("replacement", "eng"),),
@@ -394,3 +395,53 @@ def test_invalid_update_leaves_existing_entry_untouched(
         save_jmdict_entry(db_session, invalid)
 
     assert database_snapshot(db_session) == before
+
+
+@pytest.mark.parametrize("is_common", [False, True])
+def test_import_preserves_commonness(
+    db_session: Session,
+    parsed_entry: JmdictEntry,
+    is_common: bool,
+):
+    entry = replace(parsed_entry, is_common=is_common)
+
+    entry_id = save_jmdict_entry(db_session, entry)
+
+    stored = db_session.scalar(
+        select(JmdictEntryRecord.is_common).where(
+            JmdictEntryRecord.id == entry_id,
+        )
+    )
+
+    assert stored is is_common
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [(False, True), (True, False)],
+)
+def test_reimport_updates_commonness(
+    db_session: Session,
+    parsed_entry: JmdictEntry,
+    before: bool,
+    after: bool,
+):
+    entry_id = save_jmdict_entry(
+        db_session,
+        replace(parsed_entry, is_common=before),
+    )
+
+    updated_id = save_jmdict_entry(
+        db_session,
+        replace(parsed_entry, is_common=after),
+    )
+
+    assert updated_id == entry_id
+    assert (
+        db_session.scalar(
+            select(JmdictEntryRecord.is_common).where(
+                JmdictEntryRecord.id == entry_id,
+            )
+        )
+        is after
+    )

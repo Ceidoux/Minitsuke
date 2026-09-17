@@ -76,7 +76,7 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
                 JmdictWrittenFormRecord.entry_id == record.id,
             )
         )
-
+    record.is_common = entry.is_common
     forms = {
         text: JmdictWrittenFormRecord(
             entry_id=record.id,

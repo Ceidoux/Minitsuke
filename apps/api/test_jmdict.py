@@ -372,3 +372,84 @@ def test_rejects_wrong_document_root(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Expected JMdict root element"):
         list(read_jmdict(path))
+
+
+@pytest.mark.parametrize("location", ["written_form", "reading"])
+@pytest.mark.parametrize(
+    ("priority", "expected"),
+    [
+        ("news1", True),
+        ("ichi1", True),
+        ("spec1", True),
+        ("spec2", True),
+        ("gai1", True),
+        ("news2", False),
+        ("ichi2", False),
+        ("gai2", False),
+        ("nf01", False),
+        ("", False),
+    ],
+)
+def test_derives_commonness_from_priority(
+    location: str,
+    priority: str,
+    expected: bool,
+) -> None:
+    written_priority = (
+        f"<ke_pri>{priority}</ke_pri>" if location == "written_form" else ""
+    )
+    reading_priority = f"<re_pri>{priority}</re_pri>" if location == "reading" else ""
+    element = ET.fromstring(
+        f"""
+        <entry>
+            <ent_seq>301</ent_seq>
+            <k_ele>
+                <keb>学校</keb>
+                {written_priority}
+            </k_ele>
+            <r_ele>
+                <reb>がっこう</reb>
+                {reading_priority}
+            </r_ele>
+            <sense><gloss>school</gloss></sense>
+        </entry>
+        """
+    )
+
+    assert parse_entry(element).is_common is expected
+
+
+def test_entry_without_priority_is_not_marked_common() -> None:
+    element = ET.fromstring(
+        """
+        <entry>
+            <ent_seq>302</ent_seq>
+            <r_ele><reb>てすと</reb></r_ele>
+            <sense><gloss>test</gloss></sense>
+        </entry>
+        """
+    )
+
+    assert parse_entry(element).is_common is False
+
+
+def test_common_priority_on_later_reading_marks_kana_only_entry() -> None:
+    element = ET.fromstring(
+        """
+        <entry>
+            <ent_seq>303</ent_seq>
+            <r_ele>
+                <reb>テスト</reb>
+                <re_pri>news2</re_pri>
+            </r_ele>
+            <r_ele>
+                <reb>てすと</reb>
+                <re_pri>nf01</re_pri>
+                <re_pri>spec1</re_pri>
+            </r_ele>
+            <sense><gloss>test</gloss></sense>
+        </entry>
+        """
+    )
+
+    assert parse_entry(element).is_common is True

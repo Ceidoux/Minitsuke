@@ -4,6 +4,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -36,6 +37,10 @@ class JmdictEntryRecord(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     source_id: Mapped[int] = mapped_column()
+    is_common: Mapped[bool] = mapped_column(
+        nullable=False,
+        server_default=false(),
+    )
 
 
 class JmdictWrittenFormRecord(Base):
