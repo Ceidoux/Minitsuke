@@ -14,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Subquery
 
+from approximate_reading import reading_prefix_alternatives
 from japanese_text import normalize_reading, normalize_written_form
 from models import (
     JmdictEntryRecord,
@@ -161,11 +162,27 @@ def find_reading_matches(
         raise ValueError("Search query must not be empty")
 
     reading = JmdictReadingRecord.search_text
+    alternatives = reading_prefix_alternatives(normalized)
+
+    original_exact = reading == normalized
+    original_prefix = reading.startswith(normalized, autoescape=True)
+    original_substring = reading.contains(normalized, autoescape=True)
+
+    alternative_exact = reading.in_(alternatives)
+    alternative_prefix = or_(
+        false(),
+        *(
+            reading.startswith(alternative, autoescape=True)
+            for alternative in alternatives
+        ),
+    )
 
     reading_tier = case(
-        (reading == normalized, 0),
-        (reading.startswith(normalized, autoescape=True), 1),
-        else_=2,
+        (original_exact, 0),
+        (original_prefix, 1),
+        (original_substring, 2),
+        (alternative_exact, 3),
+        else_=4,
     )
 
     best_matches = (
@@ -173,7 +190,7 @@ def find_reading_matches(
             JmdictReadingRecord.entry_id.label("entry_id"),
             func.min(reading_tier).label("tier"),
         )
-        .where(reading.contains(normalized, autoescape=True))
+        .where(original_substring | alternative_prefix)
         .group_by(JmdictReadingRecord.entry_id)
         .subquery()
     )
@@ -349,11 +366,36 @@ def find_latin_matches(
         literal(0).label("gloss_position"),
     ).where(or_(*reading_conditions))
 
+    alternatives = (
+        reading_prefix_alternatives(interpretation.complete_reading)
+        if interpretation.complete_reading is not None
+        else ()
+    )
+
+    alternative_prefix = or_(
+        false(),
+        *(
+            reading.startswith(alternative, autoescape=True)
+            for alternative in alternatives
+        ),
+    )
+
+    approximate_candidates = select(
+        JmdictReadingRecord.entry_id.label("entry_id"),
+        case(
+            (reading.in_(alternatives), 7),
+            else_=8,
+        ).label("tier"),
+        literal(None, type_=Integer).label("gloss_length"),
+        literal(0).label("sense_position"),
+        literal(0).label("gloss_position"),
+    ).where(alternative_prefix)
     gloss_candidates = _gloss_candidates(query, languages)
 
     candidates = union_all(
         written_candidates,
         reading_candidates,
+        approximate_candidates,
         select(
             gloss_candidates.c.entry_id,
             gloss_candidates.c.tier,

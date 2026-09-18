@@ -172,3 +172,14 @@ uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
 Run these commands from `apps/api` with `DATABASE_URL` set to the intended database.
 
 New imports populate frequency bands automatically. For an existing dictionary, the frequency-column migration alone leaves bands unknown; reimporting JMdict populates them. Installations that alread
+
+Reading searches support limited approximate matching: kana queries and
+complete romaji queries can suggest reading prefixes differing by one
+voicing change, such as だべ → たべ. These suggestions appear after all
+genuine matches.
+
+Approximate matching requires at least two kana characters. It does not
+handle arbitrary spelling mistakes, missing characters, or multiple
+voicing changes.
+General typo correction is not implemented; approximate matching currently
+covers only one kana voicing change.

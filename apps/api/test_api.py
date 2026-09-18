@@ -199,3 +199,44 @@ def test_api_paginates_distinct_entries(
     assert [entry["source_id"] for entry in second_page["results"]] == [130]
     assert second_page["offset"] == 30
     assert second_page["has_more"] is False
+
+
+@pytest.mark.parametrize("query", ["だべ", "dabe"])
+def test_api_returns_voicing_suggestions_after_genuine_matches(
+    client: TestClient,
+    db_session: Session,
+    query: str,
+):
+    for source_id, reading, common in (
+        (200, "だべる", False),
+        (100, "たべる", True),
+    ):
+        save_jmdict_entry(
+            db_session,
+            JmdictEntry(
+                source_id=source_id,
+                written_forms=(),
+                readings=(JmdictReading(text=reading),),
+                senses=(
+                    JmdictSense(
+                        glosses=(JmdictGloss(text="test", language="eng"),),
+                    ),
+                ),
+                is_common=common,
+            ),
+        )
+
+    response = client.get(
+        "/api/v1/search",
+        params={"q": query},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert [entry["source_id"] for entry in payload["results"]] == [200, 100]
+    assert [entry["readings"][0]["text"] for entry in payload["results"]] == [
+        "だべる",
+        "たべる",
+    ]
+    assert payload["has_more"] is False
