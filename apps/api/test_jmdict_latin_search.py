@@ -136,3 +136,23 @@ def test_combines_and_deduplicates_before_pagination(db_session: Session):
     assert first.has_more is True
     assert [match.source_id for match in second.matches] == [300]
     assert second.has_more is False
+
+
+def test_gloss_query_preserves_non_english_letters(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        reading="みち",
+        gloss="Straße",
+        language="ger",
+    )
+
+    page = find_latin_matches(
+        db_session,
+        "Straße",
+        languages=("ger",),
+    )
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (100, 0),
+    ]

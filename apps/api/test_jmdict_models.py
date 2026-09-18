@@ -27,7 +27,7 @@ def test_entry_stores_multiple_written_forms(db_session: Session):
             JmdictWrittenFormRecord(
                 entry_id=entry.id,
                 text="学校",
-                search_text="學校",
+                search_text="学校",
                 position=1,
             ),
         ]

@@ -268,7 +268,7 @@ def find_latin_matches(
         ).label("tier"),
     ).where(or_(*reading_conditions))
 
-    gloss_candidates = _gloss_candidates(cleaned, languages)
+    gloss_candidates = _gloss_candidates(query, languages)
 
     candidates = union_all(
         written_candidates,
