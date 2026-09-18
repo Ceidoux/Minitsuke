@@ -119,4 +119,56 @@ Here's the command:
 uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
 ```
 
-Note: search API still uses the original vocabulary tables for now
+## JMdict search API
+
+`GET /api/v1/search` searches imported JMdict entries in PostgreSQL.
+
+Supports Japanese written forms, kana readings, romaji (including unfinished syllables), and translations in enabled languages. Matching normalizes kana and character width, and ignores Latin capitalization while preserving original spellings for display.
+
+| Parameter   | Default  | Description                                                             |
+| ----------- | -------- | ----------------------------------------------------------------------- |
+| `q`         | Required | Search text; surrounding whitespace is removed                          |
+| `limit`     | `30`     | Results per page, from 1 to 100                                         |
+| `offset`    | `0`      | Number of results to skip; must be nonnegative                          |
+| `languages` | `eng`    | Gloss language codes; repeat the parameter to enable multiple languages |
+
+Example requests:
+
+```text
+/api/v1/search?q=学校
+/api/v1/search?q=tabe
+/api/v1/search?q=school&limit=30&offset=30
+/api/v1/search?q=école&languages=eng&languages=fre
+```
+
+Each result represents one JMdict entry, including its source ID, commonness flag, written forms, readings, senses, glosses, parts of speech, and restrictions.
+
+Results are deduplicated and ranked before pagination. The response includes `query`, `results`, `limit`, `offset`, and `has_more`.
+
+Enabled languages control translation matching and returned glosses. Japanese matching remains available regardless of language selection. Senses are preserved even when they have no gloss in an enabled language.
+
+Empty or whitespace-only queries return HTTP 400. Missing queries and invalid pagination parameters return HTTP 422.
+
+### Ranking
+
+* Kana searches prioritize exact readings, then prefixes, then substrings.
+* Written-form searches prioritize exact matches, then substrings.
+* Latin input searches written forms, romaji interpretations, and enabled-language glosses together.
+* Commonness, definition position, JMdict frequency bands, and stable tie-breakers refine the ordering.
+
+For translation candidates, sense and gloss position take precedence over frequency bands.
+
+Commonness and frequency bands describe the whole entry, not individual senses. Frequency bands come from newspaper data; lower bands receive preference, while missing bands mean unknown. They are not conversational-frequency estimates.
+
+### Frequency data for existing installations
+
+Apply migrations before importing:
+
+```bash
+uv run --locked alembic upgrade head
+uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
+```
+
+Run these commands from `apps/api` with `DATABASE_URL` set to the intended database.
+
+New imports populate frequency bands automatically. For an existing dictionary, the frequency-column migration alone leaves bands unknown; reimporting JMdict populates them. Installations that alread
