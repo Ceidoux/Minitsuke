@@ -33,6 +33,10 @@ class JmdictEntryRecord(Base):
     __tablename__ = "jmdict_entries"
     __table_args__ = (
         UniqueConstraint("source_id", name="uq_jmdict_entries_source_id"),
+        CheckConstraint(
+            "frequency_band > 0",
+            name="ck_jmdict_entries_positive_frequency_band",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -41,6 +45,7 @@ class JmdictEntryRecord(Base):
         nullable=False,
         server_default=false(),
     )
+    frequency_band: Mapped[int | None] = mapped_column(nullable=True)
 
 
 class JmdictWrittenFormRecord(Base):

@@ -48,12 +48,12 @@ def test_combines_all_latin_match_tiers(db_session: Session):
     page = find_latin_matches(db_session, "tabe")
 
     assert [(match.source_id, match.tier) for match in page.matches] == [
-        (500, 0),
         (600, 0),
+        (500, 0),
         (400, 1),
         (300, 2),
         (200, 3),
-        (100, 4),
+        (100, 6),
     ]
 
 
@@ -155,4 +155,35 @@ def test_gloss_query_preserves_non_english_letters(db_session: Session):
 
     assert [(match.source_id, match.tier) for match in page.matches] == [
         (100, 0),
+    ]
+
+
+def test_combined_search_prefers_direct_gloss_prefix(db_session: Session):
+    add_entry(
+        db_session,
+        300,
+        reading="がっこう",
+        gloss="school",
+    )
+    add_entry(
+        db_session,
+        200,
+        reading="こうしゃ",
+        gloss="school building",
+        is_common=True,
+    )
+    add_entry(
+        db_session,
+        100,
+        reading="おうえん",
+        gloss="cheering (esp. for a school sports team)",
+        is_common=True,
+    )
+
+    page = find_latin_matches(db_session, "scho")
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (200, 3),
+        (300, 3),
+        (100, 5),
     ]

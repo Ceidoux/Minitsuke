@@ -119,8 +119,8 @@ def test_phrase_matches_require_word_boundaries(db_session: Session):
     assert [(match.source_id, match.tier) for match in page.matches] == [
         (100, 0),
         (200, 1),
-        (300, 3),
         (400, 3),
+        (300, 3),
     ]
 
 
@@ -164,3 +164,56 @@ def test_keeps_best_match_before_pagination(db_session: Session):
 def test_rejects_blank_query(db_session: Session):
     with pytest.raises(ValueError, match="Search query must not be empty"):
         find_gloss_matches(db_session, "   ")
+
+
+def test_gloss_prefix_prefers_direct_definition(db_session: Session):
+    add_gloss_entry(db_session, 500, (("school", "eng"),))
+    add_gloss_entry(db_session, 400, (("school building", "eng"),), is_common=True)
+    add_gloss_entry(db_session, 300, (("primary school", "eng"),), is_common=True)
+    add_gloss_entry(
+        db_session,
+        100,
+        (("cheering (esp. for a school sports team)", "eng"),),
+        is_common=True,
+    )
+
+    page = find_gloss_matches(db_session, "scho")
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (400, 3),
+        (500, 3),
+        (300, 4),
+        (100, 5),
+    ]
+
+
+def test_earlier_gloss_takes_priority_over_shorter_later_gloss(db_session: Session):
+    add_gloss_entry(
+        db_session,
+        200,
+        (
+            ("school building", "eng"),
+            ("school", "eng"),
+            ("a", "eng"),
+        ),
+    )
+    add_gloss_entry(
+        db_session,
+        100,
+        (("schoolhouse", "eng"),),
+        is_common=True,
+    )
+
+    page = find_gloss_matches(db_session, "scho")
+
+    assert [match.source_id for match in page.matches] == [100, 200]
+
+
+def test_equal_gloss_lengths_use_commonness_then_source_id(db_session: Session):
+    add_gloss_entry(db_session, 100, (("school", "eng"),))
+    add_gloss_entry(db_session, 300, (("school", "eng"),), is_common=True)
+    add_gloss_entry(db_session, 200, (("school", "eng"),), is_common=True)
+
+    page = find_gloss_matches(db_session, "scho")
+
+    assert [match.source_id for match in page.matches] == [200, 300, 100]

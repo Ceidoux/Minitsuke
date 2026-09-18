@@ -34,6 +34,7 @@ class JmdictEntry:
     readings: tuple[JmdictReading, ...]
     senses: tuple[JmdictSense, ...]
     is_common: bool = False
+    frequency_band: int | None = None
 
 
 def parse_entry(element: ET.Element) -> JmdictEntry:
@@ -108,17 +109,34 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
         )
     if not senses:
         raise ValueError("JMdict entry must contain at least one sense")
-    is_common = any(
-        node.text in COMMON_PRIORITY_TAGS
+    priority_tags = {
+        node.text.strip()
         for path in ("k_ele/ke_pri", "r_ele/re_pri")
         for node in element.findall(path)
-    )
+        if node.text is not None
+    }
+
+    is_common = bool(priority_tags & COMMON_PRIORITY_TAGS)
+
+    frequency_bands = []
+
+    for tag in priority_tags:
+        if (
+            len(tag) == 4
+            and tag.startswith("nf")
+            and all("0" <= character <= "9" for character in tag[2:])
+        ):
+            band = int(tag[2:])
+            if band > 0:
+                frequency_bands.append(band)
+
     return JmdictEntry(
         source_id=source_id,
         written_forms=written_forms,
         readings=readings,
         senses=tuple(senses),
         is_common=is_common,
+        frequency_band=min(frequency_bands, default=None),
     )
 
 

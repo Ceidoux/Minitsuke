@@ -78,6 +78,7 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
             )
         )
     record.is_common = entry.is_common
+    record.frequency_band = entry.frequency_band
     forms = {
         text: JmdictWrittenFormRecord(
             entry_id=record.id,

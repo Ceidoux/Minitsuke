@@ -1,7 +1,16 @@
 import re
 from dataclasses import dataclass
 
-from sqlalchemy import case, false, func, or_, select, union_all
+from sqlalchemy import (
+    Integer,
+    case,
+    false,
+    func,
+    literal,
+    or_,
+    select,
+    union_all,
+)
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Subquery
 
@@ -30,6 +39,46 @@ class MatchPage:
     has_more: bool
 
 
+def _candidate_order(candidates: Subquery):
+    return (
+        candidates.c.tier,
+        candidates.c.sense_position,
+        candidates.c.gloss_position,
+        case(
+            (candidates.c.tier == 3, candidates.c.gloss_length),
+            else_=0,
+        ),
+    )
+
+
+def _best_candidate_per_entry(candidates: Subquery) -> Subquery:
+    numbered = select(
+        candidates.c.entry_id,
+        candidates.c.tier,
+        candidates.c.sense_position,
+        candidates.c.gloss_position,
+        candidates.c.gloss_length,
+        func.row_number()
+        .over(
+            partition_by=candidates.c.entry_id,
+            order_by=_candidate_order(candidates),
+        )
+        .label("candidate_number"),
+    ).subquery()
+
+    return (
+        select(
+            numbered.c.entry_id,
+            numbered.c.tier,
+            numbered.c.sense_position,
+            numbered.c.gloss_position,
+            numbered.c.gloss_length,
+        )
+        .where(numbered.c.candidate_number == 1)
+        .subquery()
+    )
+
+
 def _paginate_matches(
     session: Session,
     best_matches: Subquery,
@@ -43,6 +92,31 @@ def _paginate_matches(
     if offset < 0:
         raise ValueError("Offset must not be negative")
 
+    ordering = [
+        best_matches.c.tier,
+        JmdictEntryRecord.is_common.desc(),
+    ]
+
+    if "sense_position" in best_matches.c:
+        ordering.extend(
+            [
+                best_matches.c.sense_position,
+                best_matches.c.gloss_position,
+            ]
+        )
+
+    ordering.append(JmdictEntryRecord.frequency_band.asc().nulls_last())
+
+    if "gloss_length" in best_matches.c:
+        ordering.append(
+            case(
+                (best_matches.c.tier == 3, best_matches.c.gloss_length),
+                else_=0,
+            )
+        )
+
+    ordering.append(JmdictEntryRecord.source_id)
+
     statement = (
         select(
             JmdictEntryRecord.id.label("entry_id"),
@@ -54,11 +128,7 @@ def _paginate_matches(
             best_matches,
             best_matches.c.entry_id == JmdictEntryRecord.id,
         )
-        .order_by(
-            best_matches.c.tier,
-            JmdictEntryRecord.is_common.desc(),
-            JmdictEntryRecord.source_id,
-        )
+        .order_by(*ordering)
         .offset(offset)
         .limit(limit + 1)
     )
@@ -164,18 +234,30 @@ def _gloss_candidates(
 
     exact = func.lower(gloss) == func.lower(cleaned)
     whole_word = gloss.bool_op("~*")(rf"\m{escaped}\M")
+    starts_gloss = gloss.bool_op("~*")(rf"^{escaped}")
     word_prefix = gloss.bool_op("~*")(rf"\m{escaped}")
+
+    main_definition = func.split_part(gloss, "(", 1)
+    main_word_prefix = main_definition.bool_op("~*")(rf"\m{escaped}")
 
     tier = case(
         (exact, 0),
         (whole_word, 1),
-        else_=3,
+        (starts_gloss, 3),
+        (main_word_prefix, 4),
+        else_=5,
     )
 
     return (
         select(
             JmdictSenseRecord.entry_id.label("entry_id"),
             tier.label("tier"),
+            case(
+                (starts_gloss, func.length(gloss)),
+                else_=None,
+            ).label("gloss_length"),
+            JmdictSenseRecord.position.label("sense_position"),
+            JmdictGlossRecord.position.label("gloss_position"),
         )
         .select_from(JmdictGlossRecord)
         .join(
@@ -200,14 +282,7 @@ def find_gloss_matches(
 ) -> MatchPage:
     candidates = _gloss_candidates(query, languages)
 
-    best_matches = (
-        select(
-            candidates.c.entry_id,
-            func.min(candidates.c.tier).label("tier"),
-        )
-        .group_by(candidates.c.entry_id)
-        .subquery()
-    )
+    best_matches = _best_candidate_per_entry(candidates)
 
     return _paginate_matches(
         session,
@@ -236,8 +311,11 @@ def find_latin_matches(
         case(
             (written == cleaned, 0),
             (written.startswith(cleaned, autoescape=True), 2),
-            else_=4,
+            else_=6,
         ).label("tier"),
+        literal(None, type_=Integer).label("gloss_length"),
+        literal(0).label("sense_position"),
+        literal(0).label("gloss_position"),
     ).where(written.contains(cleaned, autoescape=True))
 
     # Search readings through complete and unfinished romaji interpretations.
@@ -264,8 +342,11 @@ def find_latin_matches(
         case(
             (exact_reading, 0),
             (or_(*prefix_conditions), 2),
-            else_=4,
+            else_=6,
         ).label("tier"),
+        literal(None, type_=Integer).label("gloss_length"),
+        literal(0).label("sense_position"),
+        literal(0).label("gloss_position"),
     ).where(or_(*reading_conditions))
 
     gloss_candidates = _gloss_candidates(query, languages)
@@ -276,17 +357,13 @@ def find_latin_matches(
         select(
             gloss_candidates.c.entry_id,
             gloss_candidates.c.tier,
+            gloss_candidates.c.gloss_length,
+            gloss_candidates.c.sense_position,
+            gloss_candidates.c.gloss_position,
         ),
     ).subquery()
 
-    best_matches = (
-        select(
-            candidates.c.entry_id,
-            func.min(candidates.c.tier).label("tier"),
-        )
-        .group_by(candidates.c.entry_id)
-        .subquery()
-    )
+    best_matches = _best_candidate_per_entry(candidates)
 
     return _paginate_matches(
         session,
