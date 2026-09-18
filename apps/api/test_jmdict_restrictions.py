@@ -23,6 +23,7 @@ def restriction_parents(db_session: Session) -> list[tuple[int, int, int]]:
         reading = JmdictReadingRecord(
             entry_id=entry.id,
             text="がっこう",
+            search_text="がっこう",
             position=1,
             no_kanji=False,
         )

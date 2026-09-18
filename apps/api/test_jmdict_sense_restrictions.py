@@ -53,7 +53,10 @@ def sense_restriction_parents(
 
         if target_field == "reading_id":
             texts = ("がっこう", "ガッコウ")
-            extra = {"no_kanji": False}
+            extra = {
+                "no_kanji": False,
+                "search_text": "がっこう",
+            }
         else:
             texts = ("学校", "學校")
             extra = {}

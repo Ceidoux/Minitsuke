@@ -7,6 +7,7 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "psycopg[binary]>=3.3.5",
     "pydantic>=2.13.5",
+    "romkan2>=0.1.1",
     "sqlalchemy>=2.0.54",
 ]
 

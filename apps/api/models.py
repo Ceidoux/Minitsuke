@@ -104,6 +104,7 @@ class JmdictReadingRecord(Base):
         ForeignKey("jmdict_entries.id", ondelete="CASCADE"),
     )
     text: Mapped[str] = mapped_column(Text)
+    search_text: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column()
     no_kanji: Mapped[bool] = mapped_column()
 
