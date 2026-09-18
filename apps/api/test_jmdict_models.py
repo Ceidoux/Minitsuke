@@ -3,6 +3,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from japanese_text import normalize_reading, normalize_written_form
 from models import (
     JmdictEntryRecord,
     JmdictReadingRecord,
@@ -20,11 +21,13 @@ def test_entry_stores_multiple_written_forms(db_session: Session):
             JmdictWrittenFormRecord(
                 entry_id=entry.id,
                 text="學校",
+                search_text="學校",
                 position=2,
             ),
             JmdictWrittenFormRecord(
                 entry_id=entry.id,
                 text="学校",
+                search_text="学校",
                 position=1,
             ),
         ]
@@ -81,6 +84,7 @@ def test_invalid_written_form_is_rejected(
         JmdictWrittenFormRecord(
             entry_id=entry.id,
             text="学校",
+            search_text="学校",
             position=1,
         )
     )
@@ -91,6 +95,7 @@ def test_invalid_written_form_is_rejected(
             JmdictWrittenFormRecord(
                 entry_id=entry.id,
                 text=text,
+                search_text=normalize_written_form(text),
                 position=position,
             )
         )
@@ -110,11 +115,13 @@ def test_deleting_entry_removes_only_its_forms(db_session: Session):
             JmdictWrittenFormRecord(
                 entry_id=first.id,
                 text="学校",
+                search_text="学校",
                 position=1,
             ),
             JmdictWrittenFormRecord(
                 entry_id=second.id,
                 text="食べる",
+                search_text="食べる",
                 position=1,
             ),
         ]
@@ -142,12 +149,14 @@ def test_entry_stores_multiple_readings(db_session: Session):
             JmdictReadingRecord(
                 entry_id=entry.id,
                 text="なまもの",
+                search_text="なまもの",
                 position=2,
                 no_kanji=False,
             ),
             JmdictReadingRecord(
                 entry_id=entry.id,
                 text="せいぶつ",
+                search_text="せいぶつ",
                 position=1,
                 no_kanji=False,
             ),
@@ -186,6 +195,7 @@ def test_reading_without_written_forms_preserves_flag(
         JmdictReadingRecord(
             entry_id=entry.id,
             text="こんにちは",
+            search_text="こんにちは",
             position=1,
             no_kanji=no_kanji,
         )
@@ -223,6 +233,7 @@ def test_invalid_reading_is_rejected(
         JmdictReadingRecord(
             entry_id=entry.id,
             text="せいぶつ",
+            search_text="せいぶつ",
             position=1,
             no_kanji=False,
         )
@@ -234,6 +245,7 @@ def test_invalid_reading_is_rejected(
             JmdictReadingRecord(
                 entry_id=entry.id,
                 text=text,
+                search_text=normalize_reading(text),
                 position=position,
                 no_kanji=False,
             )
@@ -254,12 +266,14 @@ def test_deleting_entry_removes_only_its_readings(db_session: Session):
             JmdictReadingRecord(
                 entry_id=first.id,
                 text="がっこう",
+                search_text="がっこう",
                 position=1,
                 no_kanji=False,
             ),
             JmdictReadingRecord(
                 entry_id=second.id,
                 text="がっこう",
+                search_text="がっこう",
                 position=1,
                 no_kanji=False,
             ),

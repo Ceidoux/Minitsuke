@@ -445,3 +445,75 @@ def test_reimport_updates_commonness(
         )
         is after
     )
+
+
+@pytest.mark.parametrize(
+    ("original", "normalized"),
+    [
+        ("たべる", "たべる"),
+        ("データベース", "でーたべーす"),
+        ("ﾀﾍﾞﾙ", "たべる"),
+    ],
+)
+def test_import_stores_normalized_reading_without_changing_display(
+    db_session: Session,
+    original: str,
+    normalized: str,
+):
+    entry = JmdictEntry(
+        source_id=1000001,
+        written_forms=(),
+        readings=(JmdictReading(text=original),),
+        senses=(
+            JmdictSense(
+                glosses=(JmdictGloss("test meaning", "eng"),),
+            ),
+        ),
+    )
+
+    entry_id = save_jmdict_entry(db_session, entry)
+
+    row = db_session.execute(
+        select(
+            JmdictReadingRecord.text,
+            JmdictReadingRecord.search_text,
+        ).where(JmdictReadingRecord.entry_id == entry_id)
+    ).one()
+
+    assert tuple(row) == (original, normalized)
+
+
+@pytest.mark.parametrize(
+    ("original", "normalized"),
+    [
+        ("Ｔシャツ", "tしゃつ"),
+        ("Tシャツ", "tしゃつ"),
+        ("学校", "学校"),
+    ],
+)
+def test_import_stores_normalized_written_form(
+    db_session: Session,
+    original: str,
+    normalized: str,
+):
+    entry = JmdictEntry(
+        source_id=1000001,
+        written_forms=(original,),
+        readings=(JmdictReading(text="てすと"),),
+        senses=(
+            JmdictSense(
+                glosses=(JmdictGloss(text="test", language="eng"),),
+            ),
+        ),
+    )
+
+    entry_id = save_jmdict_entry(db_session, entry)
+
+    row = db_session.execute(
+        select(
+            JmdictWrittenFormRecord.text,
+            JmdictWrittenFormRecord.search_text,
+        ).where(JmdictWrittenFormRecord.entry_id == entry_id)
+    ).one()
+
+    assert tuple(row) == (original, normalized)

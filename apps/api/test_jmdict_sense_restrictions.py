@@ -3,6 +3,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from japanese_text import normalize_reading, normalize_written_form
 from models import (
     JmdictEntryRecord,
     JmdictReadingRecord,
@@ -54,14 +55,17 @@ def sense_restriction_parents(
         if target_field == "reading_id":
             texts = ("がっこう", "ガッコウ")
             extra = {"no_kanji": False}
+            normalize = normalize_reading
         else:
             texts = ("学校", "學校")
             extra = {}
+            normalize = normalize_written_form
 
         targets = [
             target_model(
                 entry_id=entry.id,
                 text=text,
+                search_text=normalize(text),
                 position=position,
                 **extra,
             )

@@ -23,12 +23,14 @@ def restriction_parents(db_session: Session) -> list[tuple[int, int, int]]:
         reading = JmdictReadingRecord(
             entry_id=entry.id,
             text="がっこう",
+            search_text="がっこう",
             position=1,
             no_kanji=False,
         )
         form = JmdictWrittenFormRecord(
             entry_id=entry.id,
             text="学校",
+            search_text="学校",
             position=1,
         )
         db_session.add_all([reading, form])
@@ -48,6 +50,7 @@ def test_reading_can_restrict_to_multiple_forms(
     second_form = JmdictWrittenFormRecord(
         entry_id=entry_id,
         text="學校",
+        search_text="學校",
         position=2,
     )
     db_session.add(second_form)

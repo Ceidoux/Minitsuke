@@ -1,6 +1,7 @@
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from japanese_text import normalize_reading, normalize_written_form
 from jmdict import JmdictEntry
 from models import (
     JmdictEntryRecord,
@@ -77,10 +78,12 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
             )
         )
     record.is_common = entry.is_common
+    record.frequency_band = entry.frequency_band
     forms = {
         text: JmdictWrittenFormRecord(
             entry_id=record.id,
             text=text,
+            search_text=normalize_written_form(text),
             position=position,
         )
         for position, text in enumerate(entry.written_forms, start=1)
@@ -92,6 +95,7 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
         reading.text: JmdictReadingRecord(
             entry_id=record.id,
             text=reading.text,
+            search_text=normalize_reading(reading.text),
             position=position,
             no_kanji=reading.no_kanji,
         )
