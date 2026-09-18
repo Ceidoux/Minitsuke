@@ -1,15 +1,19 @@
+import re
 from dataclasses import dataclass
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, false, func, or_, select, union_all
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.selectable import Subquery
 
-from japanese_text import normalize_reading
+from japanese_text import normalize_reading, normalize_written_form
 from models import (
     JmdictEntryRecord,
+    JmdictGlossRecord,
     JmdictReadingRecord,
+    JmdictSenseRecord,
     JmdictWrittenFormRecord,
 )
+from romaji import interpret_romaji
 
 
 @dataclass(frozen=True)
@@ -119,11 +123,11 @@ def find_written_form_matches(
     limit: int = 30,
     offset: int = 0,
 ) -> MatchPage:
-    cleaned = query.strip()
+    cleaned = normalize_written_form(query.strip())
     if not cleaned:
         raise ValueError("Search query must not be empty")
 
-    written_form = JmdictWrittenFormRecord.text
+    written_form = JmdictWrittenFormRecord.search_text
     form_tier = case(
         (written_form == cleaned, 0),
         else_=1,
@@ -136,6 +140,151 @@ def find_written_form_matches(
         )
         .where(written_form.contains(cleaned, autoescape=True))
         .group_by(JmdictWrittenFormRecord.entry_id)
+        .subquery()
+    )
+
+    return _paginate_matches(
+        session,
+        best_matches,
+        limit=limit,
+        offset=offset,
+    )
+
+
+def _gloss_candidates(
+    query: str,
+    languages: tuple[str, ...],
+) -> Subquery:
+    cleaned = query.strip()
+    if not cleaned:
+        raise ValueError("Search query must not be empty")
+
+    gloss = JmdictGlossRecord.text
+    escaped = re.escape(cleaned)
+
+    exact = func.lower(gloss) == func.lower(cleaned)
+    whole_word = gloss.bool_op("~*")(rf"\m{escaped}\M")
+    word_prefix = gloss.bool_op("~*")(rf"\m{escaped}")
+
+    tier = case(
+        (exact, 0),
+        (whole_word, 1),
+        else_=3,
+    )
+
+    return (
+        select(
+            JmdictSenseRecord.entry_id.label("entry_id"),
+            tier.label("tier"),
+        )
+        .select_from(JmdictGlossRecord)
+        .join(
+            JmdictSenseRecord,
+            JmdictSenseRecord.id == JmdictGlossRecord.sense_id,
+        )
+        .where(
+            JmdictGlossRecord.language.in_(languages),
+            exact | word_prefix,
+        )
+        .subquery()
+    )
+
+
+def find_gloss_matches(
+    session: Session,
+    query: str,
+    *,
+    languages: tuple[str, ...] = ("eng",),
+    limit: int = 30,
+    offset: int = 0,
+) -> MatchPage:
+    candidates = _gloss_candidates(query, languages)
+
+    best_matches = (
+        select(
+            candidates.c.entry_id,
+            func.min(candidates.c.tier).label("tier"),
+        )
+        .group_by(candidates.c.entry_id)
+        .subquery()
+    )
+
+    return _paginate_matches(
+        session,
+        best_matches,
+        limit=limit,
+        offset=offset,
+    )
+
+
+def find_latin_matches(
+    session: Session,
+    query: str,
+    *,
+    languages: tuple[str, ...] = ("eng",),
+    limit: int = 30,
+    offset: int = 0,
+) -> MatchPage:
+    cleaned = normalize_written_form(query.strip())
+    if not cleaned:
+        raise ValueError("Search query must not be empty")
+
+    # Search the literal spelling, including Latin letters in Japanese words.
+    written = JmdictWrittenFormRecord.search_text
+    written_candidates = select(
+        JmdictWrittenFormRecord.entry_id.label("entry_id"),
+        case(
+            (written == cleaned, 0),
+            (written.startswith(cleaned, autoescape=True), 2),
+            else_=4,
+        ).label("tier"),
+    ).where(written.contains(cleaned, autoescape=True))
+
+    # Search readings through complete and unfinished romaji interpretations.
+    interpretation = interpret_romaji(cleaned)
+    reading = JmdictReadingRecord.search_text
+
+    exact_reading = false()
+    reading_conditions = [false()]
+    prefix_conditions = [false()]
+
+    if interpretation.complete_reading is not None:
+        complete = interpretation.complete_reading
+        exact_reading = reading == complete
+        reading_conditions.append(reading.contains(complete, autoescape=True))
+        prefix_conditions.append(reading.startswith(complete, autoescape=True))
+
+    for completion in interpretation.completion_prefixes:
+        prefix = reading.startswith(completion, autoescape=True)
+        reading_conditions.append(prefix)
+        prefix_conditions.append(prefix)
+
+    reading_candidates = select(
+        JmdictReadingRecord.entry_id.label("entry_id"),
+        case(
+            (exact_reading, 0),
+            (or_(*prefix_conditions), 2),
+            else_=4,
+        ).label("tier"),
+    ).where(or_(*reading_conditions))
+
+    gloss_candidates = _gloss_candidates(cleaned, languages)
+
+    candidates = union_all(
+        written_candidates,
+        reading_candidates,
+        select(
+            gloss_candidates.c.entry_id,
+            gloss_candidates.c.tier,
+        ),
+    ).subquery()
+
+    best_matches = (
+        select(
+            candidates.c.entry_id,
+            func.min(candidates.c.tier).label("tier"),
+        )
+        .group_by(candidates.c.entry_id)
         .subquery()
     )
 

@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from japanese_text import normalize_reading
+from japanese_text import normalize_reading, normalize_written_form
 from jmdict_search_repository import (
     find_reading_matches,
     find_written_form_matches,
@@ -169,6 +169,7 @@ def add_written_entry(
             JmdictWrittenFormRecord(
                 entry_id=entry.id,
                 text=text,
+                search_text=normalize_written_form(text),
                 position=position,
             )
             for position, text in enumerate(forms, start=1)
@@ -234,3 +235,55 @@ def test_written_form_pagination_uses_distinct_entries(db_session: Session):
     assert first.has_more is True
     assert [match.source_id for match in second.matches] == [200]
     assert second.has_more is False
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["Ｔシャツ", "Tシャツ", "tシャツ", "Tしゃつ", "Ｔｼｬﾂ"],
+)
+def test_equivalent_mixed_spellings_find_same_entry(
+    db_session: Session,
+    query: str,
+):
+    add_written_entry(db_session, 100, ("Ｔシャツ",))
+
+    page = find_written_form_matches(db_session, query)
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (100, 0),
+    ]
+
+
+def test_normalized_exact_match_beats_common_substring(db_session: Session):
+    add_written_entry(db_session, 200, ("Ｔシャツ",))
+    add_written_entry(
+        db_session,
+        100,
+        ("長袖Ｔシャツ",),
+        is_common=True,
+    )
+
+    page = find_written_form_matches(db_session, "tしゃつ")
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (200, 0),
+        (100, 1),
+    ]
+
+
+def test_normalized_written_variants_return_one_entry(db_session: Session):
+    add_written_entry(db_session, 100, ("Ｔシャツ", "Tシャツ"))
+
+    page = find_written_form_matches(db_session, "tしゃつ")
+
+    assert len(page.matches) == 1
+    assert page.matches[0].source_id == 100
+    assert page.matches[0].tier == 0
+
+
+def test_written_matching_does_not_convert_letter_names(db_session: Session):
+    add_written_entry(db_session, 100, ("Ｔシャツ",))
+
+    page = find_written_form_matches(db_session, "ティーシャツ")
+
+    assert page.matches == ()

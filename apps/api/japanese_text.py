@@ -15,3 +15,7 @@ KATAKANA_TO_HIRAGANA = str.maketrans(
 def normalize_reading(text: str) -> str:
     normalized = unicodedata.normalize("NFKC", text)
     return normalized.translate(KATAKANA_TO_HIRAGANA)
+
+
+def normalize_written_form(text: str) -> str:
+    return normalize_reading(text).casefold()

@@ -1,7 +1,7 @@
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from japanese_text import normalize_reading
+from japanese_text import normalize_reading, normalize_written_form
 from jmdict import JmdictEntry
 from models import (
     JmdictEntryRecord,
@@ -82,6 +82,7 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
         text: JmdictWrittenFormRecord(
             entry_id=record.id,
             text=text,
+            search_text=normalize_written_form(text),
             position=position,
         )
         for position, text in enumerate(entry.written_forms, start=1)
