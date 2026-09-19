@@ -187,3 +187,155 @@ def test_combined_search_prefers_direct_gloss_prefix(db_session: Session):
         (300, 3),
         (100, 5),
     ]
+
+
+def test_full_page_checks_lower_tiers_for_more_results(db_session: Session):
+    add_entry(db_session, 100, reading="あ", gloss="tabe")
+    add_entry(db_session, 200, reading="い", gloss="tabe")
+    add_entry(db_session, 300, reading="たべる", gloss="to eat")
+
+    page = find_latin_matches(db_session, "tabe", limit=2)
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (100, 0),
+        (200, 0),
+    ]
+    assert page.has_more is True
+
+
+def test_lower_tier_duplicates_do_not_create_more_results(
+    db_session: Session,
+):
+    # Both entries match the exact-gloss tier and the reading-prefix tier.
+    add_entry(db_session, 100, reading="たべる", gloss="tabe")
+    add_entry(db_session, 200, reading="たべもの", gloss="tabe")
+
+    page = find_latin_matches(db_session, "tabe", limit=2)
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (100, 0),
+        (200, 0),
+    ]
+    assert page.has_more is False
+
+
+def test_offset_crosses_tiers_without_repeating_entries(db_session: Session):
+    add_entry(db_session, 100, reading="たべる", gloss="tabe")
+    add_entry(db_session, 200, reading="あ", gloss="a tabe example")
+    add_entry(db_session, 300, reading="たべもの", gloss="food")
+    add_entry(db_session, 400, reading="い", gloss="tabelike")
+
+    first = find_latin_matches(db_session, "tabe", limit=2)
+    second = find_latin_matches(db_session, "tabe", limit=2, offset=2)
+    exhausted = find_latin_matches(db_session, "tabe", limit=2, offset=4)
+
+    assert [(match.source_id, match.tier) for match in first.matches] == [
+        (100, 0),
+        (200, 1),
+    ]
+    assert first.has_more is True
+
+    assert [(match.source_id, match.tier) for match in second.matches] == [
+        (300, 2),
+        (400, 3),
+    ]
+    assert second.has_more is False
+
+    assert exhausted.matches == ()
+    assert exhausted.has_more is False
+
+
+def test_tier_is_fully_ranked_before_limiting(db_session: Session):
+    # Insert the better-ranked entry last: insertion order must not decide.
+    add_entry(db_session, 100, reading="あ", gloss="tabe")
+    add_entry(db_session, 200, reading="い", gloss="tabe")
+    add_entry(
+        db_session,
+        300,
+        reading="う",
+        gloss="tabe",
+        is_common=True,
+    )
+
+    first = find_latin_matches(db_session, "tabe", limit=1)
+    second = find_latin_matches(db_session, "tabe", limit=1, offset=1)
+
+    assert [match.source_id for match in first.matches] == [300]
+    assert first.has_more is True
+    assert [match.source_id for match in second.matches] == [100]
+    assert second.has_more is True
+
+
+def test_short_query_exact_matches_have_more(
+    db_session: Session,
+):
+    add_entry(db_session, 100, reading="あ", gloss="sc")
+    add_entry(db_session, 200, reading="い", gloss="sc")
+    add_entry(db_session, 300, reading="う", gloss="school")
+
+    page = find_latin_matches(db_session, "sc", limit=1)
+
+    assert [match.source_id for match in page.matches] == [100]
+    assert page.has_more is True
+
+
+def test_short_query_whole_word_match_sets_has_more(
+    db_session: Session,
+):
+    add_entry(db_session, 100, reading="あ", gloss="sc")
+    add_entry(db_session, 200, reading="い", gloss="an sc example")
+
+    page = find_latin_matches(db_session, "sc", limit=1)
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (100, 0),
+    ]
+    assert page.has_more is True
+
+
+def test_short_query_offset_crosses_tiers(
+    db_session: Session,
+):
+    add_entry(db_session, 100, reading="あ", gloss="sc")
+    add_entry(db_session, 200, reading="い", gloss="an sc example")
+    add_entry(db_session, 300, reading="う", gloss="school")
+    add_entry(db_session, 400, reading="え", gloss="science")
+
+    page = find_latin_matches(db_session, "sc", limit=2, offset=1)
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (200, 1),
+        (300, 3),
+    ]
+    assert page.has_more is True
+
+
+def test_short_query_duplicate_paths_do_not_create_extra_result(
+    db_session: Session,
+):
+    # One entry matches the exact gloss and a lower-tier written prefix.
+    add_entry(
+        db_session,
+        100,
+        forms=("SCテスト",),
+        reading="えすしーてすと",
+        gloss="sc",
+    )
+
+    page = find_latin_matches(db_session, "sc", limit=1)
+
+    assert [(match.source_id, match.tier) for match in page.matches] == [
+        (100, 0),
+    ]
+    assert page.has_more is False
+
+
+def test_short_query_with_no_matches_returns_empty_page(
+    db_session: Session,
+):
+    add_entry(db_session, 100, reading="あ", gloss="unrelated")
+
+    page = find_latin_matches(db_session, "sc")
+
+    assert page.matches == ()
+    assert page.has_more is False
