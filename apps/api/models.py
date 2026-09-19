@@ -2,9 +2,11 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Text,
     UniqueConstraint,
     false,
+    func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -70,6 +72,12 @@ class JmdictWrittenFormRecord(Base):
             "position > 0",
             name="ck_jmdict_written_forms_positive_position",
         ),
+        Index(
+            "ix_jmdict_written_forms_search_text_trgm",
+            "search_text",
+            postgresql_using="gin",
+            postgresql_ops={"search_text": "gin_trgm_ops"},
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -102,6 +110,12 @@ class JmdictReadingRecord(Base):
         CheckConstraint(
             "position > 0",
             name="ck_jmdict_readings_positive_position",
+        ),
+        Index(
+            "ix_jmdict_readings_search_text_trgm",
+            "search_text",
+            postgresql_using="gin",
+            postgresql_ops={"search_text": "gin_trgm_ops"},
         ),
     )
 
@@ -175,6 +189,12 @@ class JmdictGlossRecord(Base):
             "position > 0",
             name="ck_jmdict_glosses_positive_position",
         ),
+        Index(
+            "ix_jmdict_glosses_text_trgm",
+            "text",
+            postgresql_using="gin",
+            postgresql_ops={"text": "gin_trgm_ops"},
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -184,6 +204,12 @@ class JmdictGlossRecord(Base):
     text: Mapped[str] = mapped_column(Text)
     language: Mapped[str] = mapped_column(Text)
     position: Mapped[int] = mapped_column()
+
+
+Index(
+    "ix_jmdict_glosses_lower_text",
+    func.lower(JmdictGlossRecord.text),
+)
 
 
 class JmdictPartOfSpeechRecord(Base):
