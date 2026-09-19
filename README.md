@@ -149,6 +149,14 @@ Enabled languages control translation matching and returned glosses. Japanese ma
 
 Empty or whitespace-only queries return HTTP 400. Missing queries and invalid pagination parameters return HTTP 422.
 
+Search uses PostgreSQL pg_trgm GIN indexes on gloss text, normalized readings, and normalized written forms, plus a B-tree index on lower(gloss text) for case-insensitive exact matching.
+
+The Alembic migration enables pg_trgm and builds the indexes from existing data; no dictionary reimport is required. Downgrading removes the indexes but retains the shared extension.
+
+On the local dataset of 218,785 entries, median search-service times improved from approximately 97 ms to 21 ms for school, 105 ms to 20 ms for tab, and 22 ms to 8 ms for たべる. Measurements used one warm-up and five measured runs per query, excluding HTTP and JSON serialization.
+
+The four indexes occupied approximately 147 MB. Short, broad Latin queries remain slower. These are local measurements, not concurrent-load guarantees. Search ranking, deduplication, and pagination remain unchanged.
+
 ### Ranking
 
 * Kana searches prioritize exact readings, then prefixes, then substrings.
