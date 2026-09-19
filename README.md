@@ -171,7 +171,7 @@ uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
 
 Run these commands from `apps/api` with `DATABASE_URL` set to the intended database.
 
-New imports populate frequency bands automatically. For an existing dictionary, the frequency-column migration alone leaves bands unknown; reimporting JMdict populates them. Installations that alread
+New imports populate frequency bands automatically. For an existing dictionary, the frequency-column migration alone leaves bands unknown; reimporting JMdict populates them. 
 
 Reading searches support limited approximate matching: kana queries and
 complete romaji queries can suggest reading prefixes differing by one
