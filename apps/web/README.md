@@ -24,16 +24,23 @@ This proxy does not configure production hosting.
 ## Search
 
 - Searches automatically after a 200 ms typing pause.
-- Supports Japanese spelling, kana, romaji, and English meanings through
-  the backend search API.
+- Supports Japanese spelling, kana, romaji, and meanings in the selected languages through the backend search API.
 - Waits for Japanese keyboard composition to finish before searching.
 - Loads 30 results at a time, with a Load more button.
 - Displays written forms, readings, commonness, grouped definitions,
   parts of speech, and restrictions.
 - Cancels outdated requests and supports retrying failed requests.
 
-English definitions are enabled by default. Language selection is not
-yet available in the interface.
+English definitions are enabled by default. Multiple definition languages
+can be selected simultaneously: English, French, German, Dutch, Hungarian,
+Russian, Spanish, Slovenian, and Swedish.
+
+Selected languages control translation matching and displayed definitions.
+Japanese and romaji searches remain available regardless of the selection.
+
+Each entry groups definitions by language while preserving separate senses
+and their restrictions. Changing languages resets pagination and cancels
+outdated requests. At least one language must remain selected.
 
 ## Checks
 

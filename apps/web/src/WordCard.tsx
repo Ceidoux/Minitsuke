@@ -1,4 +1,5 @@
 import type { DictionaryEntry } from './dictionary-api'
+import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 
 type WordCardProps = {
   entry: DictionaryEntry
@@ -8,9 +9,20 @@ export default function WordCard({ entry }: WordCardProps) {
   const title =
     entry.written_forms.join(' / ') || entry.readings[0]?.text || 'Entry'
 
-  const visibleSenses = entry.senses.filter(
-    (sense) => sense.glosses.length > 0,
-  )
+  const languageGroups = DICTIONARY_LANGUAGES
+    .map((language) => ({
+      language,
+      senses: entry.senses
+        .map((sense, sourcePosition) => ({
+          ...sense,
+          sourcePosition,
+          glosses: sense.glosses.filter(
+            (gloss) => gloss.language === language.code,
+          ),
+        }))
+        .filter((sense) => sense.glosses.length > 0),
+    }))
+    .filter((group) => group.senses.length > 0)
 
   return (
     <article className="word-card">
@@ -38,42 +50,48 @@ export default function WordCard({ entry }: WordCardProps) {
         ))}
       </ul>
 
-      {visibleSenses.length === 0 ? (
-        <p>No definitions in the selected language.</p>
+      {languageGroups.length === 0 ? (
+        <p>No definitions in the selected languages.</p>
       ) : (
-        <ol className="sense-list">
-          {visibleSenses.map((sense, index) => (
-            <li key={index}>
-              {sense.parts_of_speech.length > 0 && (
-                <p className="entry-note">
-                  {sense.parts_of_speech.join('; ')}
-                </p>
-              )}
+        languageGroups.map(({ language, senses }) => (
+          <section className="definition-language" key={language.code}>
+            <h4 lang={language.htmlLang}>{language.label}</h4>
 
-              <p>
-                {sense.glosses.map((gloss) => gloss.text).join('; ')}
-              </p>
+            <ol className="sense-list">
+              {senses.map((sense) => (
+                <li key={sense.sourcePosition}>
+                  {sense.parts_of_speech.length > 0 && (
+                    <p className="entry-note">
+                      {sense.parts_of_speech.join('; ')}
+                    </p>
+                  )}
 
-              {sense.restricted_to_written_forms.length > 0 && (
-                <p className="entry-note">
-                  Applies to written forms:{' '}
-                  <span lang="ja">
-                    {sense.restricted_to_written_forms.join(' / ')}
-                  </span>
-                </p>
-              )}
+                  <p lang={language.htmlLang}>
+                    {sense.glosses.map((gloss) => gloss.text).join('; ')}
+                  </p>
 
-              {sense.restricted_to_readings.length > 0 && (
-                <p className="entry-note">
-                  Applies to readings:{' '}
-                  <span lang="ja">
-                    {sense.restricted_to_readings.join(' / ')}
-                  </span>
-                </p>
-              )}
-            </li>
-          ))}
-        </ol>
+                  {sense.restricted_to_written_forms.length > 0 && (
+                    <p className="entry-note">
+                      Applies to written forms:{' '}
+                      <span lang="ja">
+                        {sense.restricted_to_written_forms.join(' / ')}
+                      </span>
+                    </p>
+                  )}
+
+                  {sense.restricted_to_readings.length > 0 && (
+                    <p className="entry-note">
+                      Applies to readings:{' '}
+                      <span lang="ja">
+                        {sense.restricted_to_readings.join(' / ')}
+                      </span>
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))
       )}
     </article>
   )

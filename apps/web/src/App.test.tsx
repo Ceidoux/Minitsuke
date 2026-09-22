@@ -215,3 +215,93 @@ test('waits until Japanese composition finishes before searching', async () => {
   )
   expect(screen.getByRole('heading', { name: '学校' })).toBeVisible()
 })
+
+test('keeps at least one language selected and sends selected languages', async () => {
+  searchMock.mockResolvedValue(makePage([makeEntry(1, '学校')]))
+
+  render(<App />)
+
+  const english = screen.getByRole('checkbox', { name: 'English' })
+  const french = screen.getByRole('checkbox', { name: 'Français' })
+
+  expect(english).toBeChecked()
+  expect(english).toBeDisabled()
+  expect(french).not.toBeChecked()
+
+  fireEvent.click(french)
+
+  expect(english).toBeEnabled()
+  expect(french).toBeChecked()
+
+  typeQuery('school')
+  await advanceTime()
+
+  expect(searchMock).toHaveBeenLastCalledWith(
+    'school',
+    expect.objectContaining({
+      languages: ['eng', 'fre'],
+      offset: 0,
+    }),
+  )
+
+  fireEvent.click(english)
+  await advanceTime()
+
+  expect(english).not.toBeChecked()
+  expect(french).toBeChecked()
+  expect(french).toBeDisabled()
+
+  expect(searchMock).toHaveBeenLastCalledWith(
+    'school',
+    expect.objectContaining({
+      languages: ['fre'],
+      offset: 0,
+    }),
+  )
+})
+
+test('changing languages cancels a pending page and resets results', async () => {
+  let finishOldPage!: (page: SearchResponse) => void
+
+  const oldPage = new Promise<SearchResponse>((resolve) => {
+    finishOldPage = resolve
+  })
+
+  searchMock
+    .mockResolvedValueOnce(makePage([makeEntry(1, '学校')], 0, true))
+    .mockReturnValueOnce(oldPage)
+    .mockResolvedValueOnce(makePage([makeEntry(3, '学園')]))
+
+  render(<App />)
+
+  typeQuery('school')
+  await advanceTime()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+  await advanceTime()
+
+  const oldSignal = searchMock.mock.calls[1][1].signal
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Français' }))
+  await advanceTime()
+
+  expect(oldSignal.aborted).toBe(true)
+  expect(searchMock).toHaveBeenLastCalledWith(
+    'school',
+    expect.objectContaining({
+      languages: ['eng', 'fre'],
+      offset: 0,
+    }),
+  )
+
+  expect(screen.queryByRole('heading', { name: '学校' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '学園' })).toBeVisible()
+
+  await act(async () => {
+    finishOldPage(makePage([makeEntry(2, '小学校')], 30))
+    await oldPage
+  })
+
+  expect(screen.queryByRole('heading', { name: '小学校' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '学園' })).toBeVisible()
+})

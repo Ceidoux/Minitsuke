@@ -150,3 +150,18 @@ button:focus-visible {
   margin-bottom: 16px;
   color: #9b2424;
 }
+
+.definition-language {
+  margin-top: 20px;
+}
+
+.definition-language + .definition-language {
+  padding-top: 16px;
+  border-top: 1px solid #d5ded7;
+}
+
+.definition-language h4 {
+  margin: 0 0 8px;
+  color: #235b43;
+  font-size: 1rem;
+}
