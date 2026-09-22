@@ -42,6 +42,22 @@ Each entry groups definitions by language while preserving separate senses
 and their restrictions. Changing languages resets pagination and cancels
 outdated requests. At least one language must remain selected.
 
+## Search URLs and preferences
+
+Search URLs include the query and selected definition languages, so they
+can be bookmarked, shared, and restored after refreshing.
+
+After a 200 ms typing pause, a changed search is added to browser history.
+Back and Forward restore the query and language selection. Pausing during
+typing can also record a partial query.
+
+Language preferences are saved in this browser when the language checkboxes
+change. Explicit languages in a URL override saved preferences without
+overwriting them. English is the fallback when no valid preference exists.
+
+Loading a search from a URL starts with the first 30 results; additional
+loaded pages are not stored in the URL.
+
 ## Checks
 
 ```bash

@@ -1,35 +1,21 @@
-import { useState } from 'react'
 import SearchResults from './SearchResults'
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
-import type { DictionaryLanguageCode } from './dictionary-languages'
+import { useSearchLocation } from './use-search-location'
 import './App.css'
 
 export default function App() {
-  const [query, setQuery] = useState('')
-  const [isComposing, setIsComposing] = useState(false)
-  const [languages, setLanguages] = useState<DictionaryLanguageCode[]>([
-    'eng',
-  ])
+  const {
+    query,
+    languages,
+    isComposing,
+    changeQuery,
+    beginComposition,
+    finishComposition,
+    toggleLanguage,
+  } = useSearchLocation()
 
   const normalizedQuery = query.trim()
   const searchKey = JSON.stringify([normalizedQuery, languages])
-
-  function toggleLanguage(code: DictionaryLanguageCode) {
-    setLanguages((previous) => {
-      if (previous.includes(code)) {
-        return previous.length === 1
-          ? previous
-          : previous.filter((language) => language !== code)
-      }
-
-      return DICTIONARY_LANGUAGES
-        .filter(
-          (language) =>
-            language.code === code || previous.includes(language.code),
-        )
-        .map((language) => language.code)
-    })
-  }
 
   return (
     <div className="app">
@@ -54,11 +40,10 @@ export default function App() {
             autoComplete="off"
             spellCheck={false}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onCompositionStart={() => setIsComposing(true)}
+            onChange={(event) => changeQuery(event.target.value)}
+            onCompositionStart={beginComposition}
             onCompositionEnd={(event) => {
-              setQuery(event.currentTarget.value)
-              setIsComposing(false)
+              finishComposition(event.currentTarget.value)
             }}
           />
 

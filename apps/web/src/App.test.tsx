@@ -305,3 +305,93 @@ test('changing languages cancels a pending page and resets results', async () =>
   expect(screen.queryByRole('heading', { name: '小学校' })).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: '学園' })).toBeVisible()
 })
+
+test('opens a shared search using URL languages instead of preferences', async () => {
+  window.localStorage.setItem(
+    'minitsuke.definition-languages',
+    JSON.stringify(['ger']),
+  )
+
+  window.history.replaceState(
+    null,
+    '',
+    '/?q=school&languages=eng&languages=fre',
+  )
+
+  searchMock.mockResolvedValue(makePage([makeEntry(1, '学校')]))
+
+  render(<App />)
+  await advanceTime()
+
+  expect(screen.getByRole('searchbox')).toHaveValue('school')
+  expect(
+    screen.getByRole('checkbox', { name: 'English' }),
+  ).toBeChecked()
+  expect(
+    screen.getByRole('checkbox', { name: 'Français' }),
+  ).toBeChecked()
+  expect(
+    screen.getByRole('checkbox', { name: 'Deutsch' }),
+  ).not.toBeChecked()
+
+  expect(searchMock).toHaveBeenLastCalledWith(
+    'school',
+    expect.objectContaining({
+      languages: ['eng', 'fre'],
+      offset: 0,
+    }),
+  )
+
+  expect(
+    JSON.parse(
+      window.localStorage.getItem('minitsuke.definition-languages')!,
+    ),
+  ).toEqual(['ger'])
+})
+
+test('restores navigation and cancels a pending URL update', async () => {
+  searchMock.mockResolvedValue(makePage([makeEntry(1, '学校')]))
+
+  render(<App />)
+
+  typeQuery('school')
+  await advanceTime()
+
+  expect(
+    new URLSearchParams(window.location.search).get('q'),
+  ).toBe('school')
+
+  typeQuery('unfinished')
+  await advanceTime(100)
+
+  act(() => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?q=tabe&languages=fre',
+    )
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
+
+  await advanceTime()
+
+  expect(screen.getByRole('searchbox')).toHaveValue('tabe')
+  expect(
+    screen.getByRole('checkbox', { name: 'Français' }),
+  ).toBeChecked()
+  expect(
+    screen.getByRole('checkbox', { name: 'English' }),
+  ).not.toBeChecked()
+
+  expect(
+    new URLSearchParams(window.location.search).get('q'),
+  ).toBe('tabe')
+
+  expect(searchMock).toHaveBeenLastCalledWith(
+    'tabe',
+    expect.objectContaining({
+      languages: ['fre'],
+      offset: 0,
+    }),
+  )
+})
