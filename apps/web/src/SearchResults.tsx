@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import { searchDictionary } from './dictionary-api'
 import type { SearchResponse } from './dictionary-api'
+import type { DictionaryLanguageCode } from './dictionary-languages'
 import WordCard from './WordCard'
 
 type SearchResultsProps = {
   query: string
+  languages: DictionaryLanguageCode[]
 }
 
-export default function SearchResults({ query }: SearchResultsProps) {
+export default function SearchResults({
+  query,
+  languages,
+}: SearchResultsProps) {
   const [page, setPage] = useState<SearchResponse | null>(null)
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -22,6 +27,7 @@ export default function SearchResults({ query }: SearchResultsProps) {
         const nextPage = await searchDictionary(query, {
           signal: controller.signal,
           offset,
+          languages,
         })
 
         if (controller.signal.aborted) {
@@ -58,7 +64,7 @@ export default function SearchResults({ query }: SearchResultsProps) {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [query, offset, attempt])
+  }, [query, languages, offset, attempt])
 
   function loadMore() {
     if (!page || loading) {
