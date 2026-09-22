@@ -7,11 +7,15 @@ import WordCard from './WordCard'
 type SearchResultsProps = {
   query: string
   languages: DictionaryLanguageCode[]
+  selectedSourceId: number | null
+  onSelect: (sourceId: number, trigger: HTMLButtonElement) => void
 }
 
 export default function SearchResults({
   query,
   languages,
+  selectedSourceId,
+  onSelect,
 }: SearchResultsProps) {
   const [page, setPage] = useState<SearchResponse | null>(null)
   const [offset, setOffset] = useState(0)
@@ -109,7 +113,12 @@ export default function SearchResults({
 
       <div className="word-list" aria-busy={loading}>
         {page?.results.map((entry) => (
-          <WordCard key={entry.source_id} entry={entry} />
+          <WordCard
+  key={entry.source_id}
+  entry={entry}
+  selected={entry.source_id === selectedSourceId}
+  onSelect={onSelect}
+/>
         ))}
       </div>
 

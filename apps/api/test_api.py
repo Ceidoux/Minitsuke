@@ -240,3 +240,102 @@ def test_api_returns_voicing_suggestions_after_genuine_matches(
         "たべる",
     ]
     assert payload["has_more"] is False
+
+
+def test_entry_detail_defaults_to_english(
+    client: TestClient,
+    school_entry: None,
+):
+    response = client.get("/api/v1/entries/100")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "source_id": 100,
+        "is_common": True,
+        "written_forms": ["学校"],
+        "readings": [
+            {
+                "text": "がっこう",
+                "no_kanji": False,
+                "restricted_to": [],
+            },
+        ],
+        "senses": [
+            {
+                "glosses": [
+                    {"text": "school", "language": "eng"},
+                ],
+                "parts_of_speech": ["noun"],
+                "restricted_to_written_forms": [],
+                "restricted_to_readings": [],
+            },
+        ],
+    }
+
+
+def test_entry_detail_supports_multiple_languages(
+    client: TestClient,
+    school_entry: None,
+):
+    response = client.get(
+        "/api/v1/entries/100",
+        params=[
+            ("languages", "eng"),
+            ("languages", "fre"),
+            ("languages", "fre"),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["senses"][0]["glosses"] == [
+        {"text": "school", "language": "eng"},
+        {"text": "école", "language": "fre"},
+    ]
+
+
+def test_entry_detail_can_exclude_english(
+    client: TestClient,
+    school_entry: None,
+):
+    response = client.get(
+        "/api/v1/entries/100",
+        params={"languages": "fre"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["senses"][0]["glosses"] == [
+        {"text": "école", "language": "fre"},
+    ]
+
+
+def test_entry_detail_exists_without_selected_language_glosses(
+    client: TestClient,
+    school_entry: None,
+):
+    response = client.get(
+        "/api/v1/entries/100",
+        params={"languages": "ger"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["source_id"] == 100
+    assert response.json()["senses"][0]["glosses"] == []
+
+
+def test_missing_entry_detail_returns_404(client: TestClient):
+    response = client.get("/api/v1/entries/999999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Dictionary entry not found",
+    }
+
+
+@pytest.mark.parametrize("source_id", ["abc", "0", "-1", "2147483648"])
+def test_entry_detail_rejects_invalid_ids(
+    client: TestClient,
+    source_id: str,
+):
+    response = client.get(f"/api/v1/entries/{source_id}")
+
+    assert response.status_code == 422

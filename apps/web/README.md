@@ -58,6 +58,26 @@ overwriting them. English is the fallback when no valid preference exists.
 Loading a search from a URL starts with the first 30 results; additional
 loaded pages are not stored in the URL.
 
+## Word details
+
+Click a search result to open its details alongside the search results.
+Text remains selectable for copying.
+
+On wide screens, the search and detail panels scroll independently.
+On narrow screens, details replace the visible search panel; Back to
+results restores it.
+
+Selecting a word preserves the current search results and loaded pages.
+The selected JMdict ID is included in the URL as `entry`, allowing direct
+links, refreshes, and Back/Forward navigation.
+
+Example:
+
+http://localhost:5173/?entry=1206730&languages=eng&languages=fre
+
+Refreshing starts the search from its first page and reopens the selected
+entry. Detail requests support cancellation and retry.
+
 ## Checks
 
 ```bash

@@ -171,3 +171,14 @@ def load_entry_restrictions(
         sense_written_restrictions=tuple(sense_written_restrictions),
         sense_reading_restrictions=tuple(sense_reading_restrictions),
     )
+
+
+def find_entry_id_by_source_id(
+    session: Session,
+    source_id: int,
+) -> int | None:
+    return session.scalar(
+        select(JmdictEntryRecord.id).where(
+            JmdictEntryRecord.source_id == source_id,
+        )
+    )
