@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 import type { DictionaryLanguageCode } from './dictionary-languages'
+import { readSelectedEntry, writeSelectedEntry } from './entry-location'
 import {
   readLanguagePreferences,
   saveLanguagePreferences,
@@ -10,6 +11,7 @@ import type { SearchLocation } from './search-location'
 
 type SearchState = SearchLocation & {
   isComposing: boolean
+  selectedSourceId: number | null
 }
 
 function readBrowserSearch(): SearchState {
@@ -19,18 +21,28 @@ function readBrowserSearch(): SearchState {
       readLanguagePreferences(),
     ),
     isComposing: false,
+    selectedSourceId: readSelectedEntry(window.location.search),
   }
 }
 
-function buildBrowserUrl(state: SearchLocation): string {
+function buildBrowserUrl(state: SearchState): string {
+  const search = writeSelectedEntry(
+    writeSearchLocation(state, window.location.search),
+    state.selectedSourceId,
+  )
+
+  return window.location.pathname + search + window.location.hash
+}
+
+function currentBrowserUrl(): string {
   return (
     window.location.pathname +
-    writeSearchLocation(state, window.location.search) +
+    window.location.search +
     window.location.hash
   )
 }
 
-function replaceBrowserUrl(state: SearchLocation) {
+function replaceBrowserUrl(state: SearchState) {
   window.history.replaceState(
     window.history.state,
     '',
@@ -38,43 +50,48 @@ function replaceBrowserUrl(state: SearchLocation) {
   )
 }
 
+function pushBrowserUrl(state: SearchState) {
+  const nextUrl = buildBrowserUrl(state)
+
+  if (nextUrl !== currentBrowserUrl()) {
+    window.history.pushState(null, '', nextUrl)
+  }
+}
+
 export function useSearchLocation() {
   const [state, setState] = useState<SearchState>(readBrowserSearch)
+  const pendingTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    // Record explicit languages so returning here restores this selection.
     replaceBrowserUrl(readBrowserSearch())
   }, [])
 
   useEffect(() => {
-    let timer: number | undefined
-
     if (!state.isComposing) {
-      timer = window.setTimeout(() => {
-        const nextUrl = buildBrowserUrl(state)
-        const currentUrl =
-          window.location.pathname +
-          window.location.search +
-          window.location.hash
-
-        if (nextUrl !== currentUrl) {
-          window.history.pushState(null, '', nextUrl)
-        }
+      pendingTimer.current = window.setTimeout(() => {
+        pushBrowserUrl(state)
       }, 200)
     }
 
     function restoreFromHistory() {
-      window.clearTimeout(timer)
+      window.clearTimeout(pendingTimer.current)
 
       const restored = readBrowserSearch()
       replaceBrowserUrl(restored)
-      setState(restored)
+
+      setState((previous) => ({
+        ...restored,
+        languages:
+          previous.languages.join(',') === restored.languages.join(',')
+            ? previous.languages
+            : restored.languages,
+      }))
     }
 
     window.addEventListener('popstate', restoreFromHistory)
 
     return () => {
-      window.clearTimeout(timer)
+      window.clearTimeout(pendingTimer.current)
       window.removeEventListener('popstate', restoreFromHistory)
     }
   }, [state])
@@ -126,11 +143,31 @@ export function useSearchLocation() {
     }))
   }
 
+  function selectSourceId(sourceId: number | null) {
+    if (sourceId === state.selectedSourceId) {
+      return
+    }
+
+    window.clearTimeout(pendingTimer.current)
+
+    // Record any pending search before recording the word selection.
+    pushBrowserUrl(state)
+
+    const nextState = {
+      ...state,
+      selectedSourceId: sourceId,
+    }
+
+    pushBrowserUrl(nextState)
+    setState(nextState)
+  }
+
   return {
     ...state,
     changeQuery,
     beginComposition,
     finishComposition,
     toggleLanguage,
+    selectSourceId,
   }
 }

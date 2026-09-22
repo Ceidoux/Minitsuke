@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from jmdict_entry_repository import (
+    find_entry_id_by_source_id,
     load_entry_basics,
     load_entry_restrictions,
     load_sense_details,
@@ -112,3 +113,30 @@ def load_entries(
         )
 
     return results
+
+
+def load_entry_by_source_id(
+    session: Session,
+    source_id: int,
+    *,
+    languages: tuple[str, ...] = ("eng",),
+) -> JmdictEntryResponse | None:
+    entry_id = find_entry_id_by_source_id(session, source_id)
+
+    if entry_id is None:
+        return None
+
+    entries = load_entries(session, (entry_id,))
+
+    if not entries:
+        return None
+
+    entry = entries[0]
+    enabled_languages = set(languages)
+
+    for sense in entry.senses:
+        sense.glosses = [
+            gloss for gloss in sense.glosses if gloss.language in enabled_languages
+        ]
+
+    return entry

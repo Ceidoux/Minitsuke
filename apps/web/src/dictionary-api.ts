@@ -76,3 +76,40 @@ export async function searchDictionary(
   const data: SearchResponse = await response.json()
   return data
 }
+
+type EntryOptions = {
+  signal: AbortSignal
+  languages: string[]
+}
+
+export async function fetchDictionaryEntry(
+  sourceId: number,
+  { signal, languages }: EntryOptions,
+): Promise<DictionaryEntry> {
+  const parameters = new URLSearchParams()
+
+  for (const language of languages) {
+    parameters.append('languages', language)
+  }
+
+  const response = await fetch(
+    `/api/v1/entries/${sourceId}?${parameters}`,
+    {
+      signal,
+      headers: {
+        Accept: 'application/json',
+      },
+    },
+  )
+
+  if (response.status === 404) {
+    throw new Error('This dictionary entry could not be found.')
+  }
+
+  if (!response.ok) {
+    throw new Error(`Unable to load this entry (${response.status}).`)
+  }
+
+  const entry: DictionaryEntry = await response.json()
+  return entry
+}
