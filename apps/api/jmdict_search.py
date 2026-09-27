@@ -2,6 +2,8 @@ import unicodedata
 
 from sqlalchemy.orm import Session
 
+from deconjugation import extract_inflection_candidate
+from deconjugation_service import find_inflection_matches
 from japanese_text import normalize_reading
 from jmdict_entry_service import load_entries
 from jmdict_search_repository import (
@@ -10,6 +12,7 @@ from jmdict_search_repository import (
     find_written_form_matches,
 )
 from schemas import JmdictSearchResponse
+from sentence_analysis import MAX_SENTENCE_LENGTH, get_sentence_analyzer
 
 
 def _is_kana(character: str) -> bool:
@@ -44,7 +47,30 @@ def search_jmdict(
     if not cleaned:
         raise ValueError("Search query must not be empty")
 
+    if not 1 <= limit <= 100:
+        raise ValueError("Limit must be between 1 and 100")
+
+    if offset < 0:
+        raise ValueError("Offset must not be negative")
+
     normalized = normalize_reading(cleaned)
+    contains_japanese = any(
+        _is_japanese_character(character) for character in normalized
+    )
+
+    inflection_entry_ids: tuple[int, ...] = ()
+
+    if contains_japanese and len(cleaned) <= MAX_SENTENCE_LENGTH:
+        analyzer = get_sentence_analyzer()
+        candidate = extract_inflection_candidate(
+            cleaned,
+            analyzer.analyze(cleaned),
+        )
+
+        if candidate is not None:
+            inflection_entry_ids = tuple(
+                match.entry_id for match in find_inflection_matches(session, candidate)
+            )
 
     if all(_is_kana(character) for character in normalized):
         page = find_reading_matches(
@@ -52,13 +78,15 @@ def search_jmdict(
             cleaned,
             limit=limit,
             offset=offset,
+            inflection_entry_ids=inflection_entry_ids,
         )
-    elif any(_is_japanese_character(character) for character in normalized):
+    elif contains_japanese:
         page = find_written_form_matches(
             session,
             cleaned,
             limit=limit,
             offset=offset,
+            inflection_entry_ids=inflection_entry_ids,
         )
     else:
         page = find_latin_matches(

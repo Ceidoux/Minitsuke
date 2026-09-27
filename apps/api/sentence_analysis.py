@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from functools import lru_cache
+from threading import Lock
 
 from sudachipy import Dictionary, SplitMode
 
@@ -51,3 +53,16 @@ class SentenceAnalyzer:
             )
 
         return tuple(tokens)
+
+
+_analyzer_lock = Lock()
+
+
+@lru_cache(maxsize=1)
+def _cached_analyzer() -> SentenceAnalyzer:
+    return SentenceAnalyzer()
+
+
+def get_sentence_analyzer() -> SentenceAnalyzer:
+    with _analyzer_lock:
+        return _cached_analyzer()
