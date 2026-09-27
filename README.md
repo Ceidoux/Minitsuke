@@ -191,3 +191,15 @@ handle arbitrary spelling mistakes, missing characters, or multiple
 voicing changes.
 General typo correction is not implemented; approximate matching currently
 covers only one kana voicing change.
+
+### Japanese sentence analysis
+
+Paste Japanese text into the search bar to automatically display clickable word segments. Select a segment to view its ranked dictionary candidates, then select a candidate to open its details.
+
+Analysis supports basic conjugation grouping, preserves the original tokens, and uses grammatical and spelling information to rank candidates. Suggested matches are not guaranteed interpretations; alternatives remain selectable.
+
+Dictionary entries display sense-specific “Usually kana” labels and kana-first headings where appropriate. Kana and romaji searches also use reading order and applicable kana-usage annotations when ranking results.
+
+The analysis API is available at `POST /api/v1/analyze`, accepting a JSON body such as `{"text":"昨日りんごを食べました。"}`. Returned offsets count Unicode code points.
+
+Existing databases must apply the usage-tag migration and populate the new table through a backfill or dictionary reimport.
