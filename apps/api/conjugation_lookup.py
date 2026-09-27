@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from conjugation_service import build_conjugation_tables
+from copula_conjugation import resolve_copula_pronunciation
 from japanese_text import normalize_written_form
 from jmdict_entry_service import load_entries
 from jmdict_exact_repository import ExactCandidate, find_exact_candidates
@@ -44,12 +45,26 @@ def _description(candidate: ReverseCandidate) -> str:
 def find_generated_inflections(
     session: Session,
     text: str,
+    *,
+    allow_copula_pronunciation: bool = False,
 ) -> tuple[tuple[ExactCandidate, ...], dict[int, list[str]]]:
-    candidates = reverse_conjugate(text)
+    query = normalize_written_form(text.strip())
+    copula_query = (
+        resolve_copula_pronunciation(query) if allow_copula_pronunciation else None
+    )
+
+    candidates = reverse_conjugate(query)
+
+    if copula_query is not None:
+        alias_candidates = (
+            candidate
+            for candidate in reverse_conjugate(copula_query)
+            if candidate.verb_class == "cop"
+        )
+        candidates = tuple(dict.fromkeys((*candidates, *alias_candidates)))
 
     if not candidates:
         return (), {}
-
     forms = tuple(
         dict.fromkeys(
             form for candidate in candidates for form in _lookup_forms(candidate)
@@ -70,7 +85,6 @@ def find_generated_inflections(
         for entry in load_entries(session, entry_ids)
     }
 
-    query = normalize_written_form(text.strip())
     accepted: dict[int, ExactCandidate] = {}
     descriptions: dict[int, list[str]] = {}
 
@@ -91,14 +105,20 @@ def find_generated_inflections(
                     }:
                         continue
 
+                    accepted_queries = {query}
+                    if candidate.verb_class == "cop" and copula_query is not None:
+                        accepted_queries.add(copula_query)
+
                     confirmed = any(
                         item.group == candidate.group
                         and item.form == candidate.form
-                        and query
-                        in {
-                            normalize_written_form(item.written),
-                            normalize_written_form(item.reading),
-                        }
+                        and bool(
+                            accepted_queries
+                            & {
+                                normalize_written_form(item.written),
+                                normalize_written_form(item.reading),
+                            }
+                        )
                         for item in table.forms
                     )
 

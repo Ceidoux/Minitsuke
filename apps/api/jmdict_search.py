@@ -71,6 +71,7 @@ def search_jmdict(
         matches, descriptions = find_generated_inflections(
             session,
             analysis_text,
+            allow_copula_pronunciation=not contains_japanese,
         )
 
         if matches:

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from conjugation import GODAN_ENDINGS, conjugate_verb
+from copula_conjugation import conjugate_copula
 from japanese_text import normalize_written_form
 
 
@@ -79,13 +80,54 @@ def _reverse_rules() -> tuple[ReverseRule, ...]:
     )
 
 
+@lru_cache(maxsize=1)
+def _copula_reverse_index() -> dict[str, tuple[ReverseCandidate, ...]]:
+    candidates_by_surface: dict[str, dict[ReverseCandidate, None]] = {}
+
+    pairs = (
+        ("だ", "だ"),
+        ("です", "です"),
+        ("である", "である"),
+        ("でございます", "でございます"),
+        ("で御座います", "でございます"),
+    )
+
+    for written, reading in pairs:
+        for item in conjugate_copula(written, reading):
+            candidate = ReverseCandidate(
+                dictionary_form=reading,
+                verb_class="cop",
+                group=item.group,
+                form=item.form,
+            )
+
+            for surface in (item.written, item.reading):
+                normalized = normalize_written_form(surface)
+
+                # An unchanged dictionary form needs no inflection match.
+                if normalized in {
+                    normalize_written_form(written),
+                    normalize_written_form(reading),
+                }:
+                    continue
+
+                candidates_by_surface.setdefault(normalized, {})[candidate] = None
+
+    return {
+        surface: tuple(candidates)
+        for surface, candidates in candidates_by_surface.items()
+    }
+
+
 def reverse_conjugate(text: str) -> tuple[ReverseCandidate, ...]:
     cleaned = normalize_written_form(text.strip())
 
     if not cleaned or any(character.isspace() for character in cleaned):
         return ()
 
-    candidates: dict[ReverseCandidate, None] = {}
+    candidates: dict[ReverseCandidate, None] = dict.fromkeys(
+        _copula_reverse_index().get(cleaned, ())
+    )
 
     for rule in _reverse_rules():
         if not cleaned.endswith(rule.surface_ending):

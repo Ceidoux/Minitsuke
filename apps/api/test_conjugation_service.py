@@ -103,3 +103,34 @@ def test_ordinary_noun_has_no_conjugation_section():
     entry = make_entry("学校", "がっこう", "noun (common) (futsuumeishi)")
 
     assert build_conjugation_tables(entry) == ([], False)
+
+
+def test_copula_takes_priority_over_irregular_verb_tag():
+    entry = make_entry("である", "である", "copula")
+    entry.senses[0].parts_of_speech.insert(
+        0,
+        "Godan verb with 'ru' ending (irregular verb)",
+    )
+    entry.senses.append(entry.senses[0].model_copy(deep=True))
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "cop"
+    assert tables[0].sense_positions == [1, 2]
+    assert any(form.written == "であった" for form in tables[0].forms)
+    assert {form.group for form in tables[0].forms} == {"basic"}
+
+
+def test_builds_kana_only_copula():
+    entry = make_entry("だ", "だ", "copula")
+    entry.written_forms = []
+    entry.readings[0].no_kanji = True
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].written == "だ"
+    assert any(form.written == "だった" for form in tables[0].forms)

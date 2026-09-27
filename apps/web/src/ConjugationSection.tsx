@@ -37,6 +37,20 @@ const FORM_LABELS: Record<string, string> = {
   imperative: 'Imperative',
   imperative_alternative: 'Alternative imperative',
   prohibitive: 'Prohibitive — do not',
+  negative_colloquial: 'Negative — colloquial',
+  negative_past_colloquial: 'Negative past — colloquial',
+  polite_negative_colloquial: 'Polite negative — contracted',
+  polite_negative_alternative: 'Polite negative — alternative',
+  polite_negative_colloquial_alternative:
+    'Polite negative — contracted alternative',
+  polite_negative_past_colloquial: 'Polite negative past — contracted',
+  polite_negative_past_alternative: 'Polite negative past — alternative',
+  polite_negative_past_colloquial_alternative:
+    'Polite negative past — contracted alternative',
+  negative_te_colloquial: 'Negative て-form — colloquial',
+  conditional_nara: 'Conditional — なら',
+  presumptive: 'Presumptive',
+  polite_presumptive: 'Polite presumptive',
 }
 
 export default function ConjugationSection({
@@ -59,8 +73,7 @@ export default function ConjugationSection({
 
       {incomplete && (
         <p className="entry-note">
-          Some verb classes or spellings in this entry are not supported yet.
-        </p>
+          Some grammatical classes or spellings in this entry are not supported yet.        </p>
       )}
 
       {table && (
@@ -93,7 +106,10 @@ export default function ConjugationSection({
           <p className="entry-note">
             Applies to source senses {table.sense_positions.join(', ')}.
             {' '}These are grammatical forms; their use depends on the meaning
-            and context. Potential and passive forms can be identical.
+            and context.
+            {table.verb_class === 'cop'
+              ? ' Copula tables include related forms across registers of politeness.'
+              : ' Potential and passive forms can be identical.'}
           </p>
 
           {Object.entries(GROUP_LABELS).map(([group, label]) => {
