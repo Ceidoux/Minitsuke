@@ -162,7 +162,10 @@ def _generate_surface_forms(
         "causative_passive": _require_ending(causative, "る") + "られる",
         "te_iru": te + "いる",
     }
-
+    if verb_class == "v1":
+        derived["potential_colloquial"] = _require_ending(word, "る") + "れる"
+    elif verb_class == "vk":
+        derived["potential_colloquial"] = ko + "れる"
     for group, dictionary in derived.items():
         for form, surface in _ichidan_finite_forms(dictionary).items():
             results[(group, form)] = surface

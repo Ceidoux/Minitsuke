@@ -414,3 +414,266 @@ button:focus-visible {
   padding: 0.5rem 0.75rem;
   text-align: left;
 }
+
+/* Compact header and settings */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app {
+  padding: 16px 24px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.app-header h1 {
+  font-size: 1.7rem;
+}
+
+.options-menu {
+  position: relative;
+}
+
+.options-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-color: transparent;
+  color: #235b43;
+  background: transparent;
+}
+
+.options-toggle:hover,
+.options-toggle[aria-expanded='true'] {
+  background: #e6f2e9;
+}
+
+.options-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  z-index: 20;
+  width: 250px;
+  max-width: calc(100vw - 32px);
+  max-height: 70dvh;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #d5ded7;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.options-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  color: #235b43;
+  background: #f5f7f4;
+  text-align: left;
+  font: inherit;
+}
+
+.menu-languages {
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+}
+
+.menu-languages .entry-note {
+  margin: 0 0 6px;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+/* Search and column layout */
+.dictionary-workspace {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  height: calc(100dvh - 100px);
+}
+
+.search-section {
+  margin-bottom: 8px;
+}
+
+.search-input {
+  margin-top: 0;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.search-status {
+  margin: 6px 0 10px;
+}
+
+.detail-pane {
+  padding-left: 18px;
+}
+
+.detail-toolbar {
+  margin-bottom: 10px;
+}
+
+.detail-toolbar h2 {
+  font-size: 1.1rem;
+}
+
+/* Shared card layout */
+.word-list {
+  gap: 8px;
+}
+
+.word-card {
+  padding: 18px;
+  border-radius: 9px;
+}
+
+.word-heading {
+  gap: 4px 9px;
+}
+
+.word-card .alternate-written-forms {
+  margin: 0;
+  color: #52645a;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.reading-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 4px 0 8px;
+}
+
+.reading-list li {
+  max-width: 100%;
+}
+
+.definition-language {
+  margin-top: 10px;
+}
+
+.definition-language + .definition-language {
+  padding-top: 8px;
+}
+
+.definition-language h4 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+.sense-list {
+  margin: 0;
+  padding-left: 21px;
+}
+
+.sense-list li + li {
+  margin-top: 8px;
+}
+
+.sense-list p {
+  margin: 2px 0;
+  line-height: 1.4;
+}
+
+.sense-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 7px;
+  line-height: 1.35;
+}
+
+.sense-meta .usage-badge {
+  margin: 0;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+}
+
+.sense-meta .entry-note {
+  font-size: 0.8rem;
+}
+
+.inflection-note {
+  margin: 6px 0;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+}
+
+/* Smaller previews; details retain more room */
+.word-card-compact {
+  padding: 11px 13px;
+  font-size: 0.92rem;
+}
+
+.word-card-compact h3 {
+  font-size: 1.4rem;
+}
+
+.word-card-compact .reading-list {
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+}
+
+.word-card-compact .definition-language {
+  margin-top: 7px;
+}
+
+.word-card-compact .definition-language + .definition-language {
+  padding-top: 6px;
+}
+
+.word-card-compact .sense-list li + li {
+  margin-top: 5px;
+}
+
+.word-card-compact .entry-note {
+  font-size: 0.8rem;
+}
+
+.word-card-compact > .entry-note:last-child {
+  margin-top: 7px;
+}
+
+@media (max-width: 800px) {
+  .dictionary-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 12px;
+  }
+
+  .dictionary-workspace {
+    height: calc(100dvh - 88px);
+  }
+}

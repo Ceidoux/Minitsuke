@@ -44,6 +44,7 @@ class JmdictEntryResponse(BaseModel):
 class InflectionResponse(BaseModel):
     source_ids: list[int]
     description: str
+    descriptions: dict[int, list[str]] = Field(default_factory=dict)
 
 
 class JmdictSearchResponse(BaseModel):

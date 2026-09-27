@@ -143,7 +143,7 @@ Example requests:
 
 Each result represents one JMdict entry, including its source ID, commonness flag, written forms, readings, senses, glosses, parts of speech, and restrictions.
 
-Results are deduplicated and ranked before pagination. The response includes `query`, `results`, `limit`, `offset`, and `has_more`.
+Results are deduplicated and ranked before pagination. The response includes `query`, `results`, `limit`, `offset`, `has_more`, and nullable `inflection` metadata. When a conjugation is recognized, this metadata identifies matching source IDs and provides per-entry explanations.
 
 Enabled languages control translation matching and returned glosses. Japanese matching remains available regardless of language selection. Senses are preserved even when they have no gloss in an enabled language.
 
@@ -203,3 +203,46 @@ Dictionary entries display sense-specific “Usually kana” labels and kana-fir
 The analysis API is available at `POST /api/v1/analyze`, accepting a JSON body such as `{"text":"昨日りんごを食べました。"}`. Returned offsets count Unicode code points.
 
 Existing databases must apply the usage-tag migration and populate the new table through a backfill or dictionary reimport.
+
+### Conjugation tables and lookup
+
+Word details include conjugation tables for supported modern verb classes:
+Ichidan, regular Godan, the Iku/Yuku exception, regular suru constructions,
+and kuru. Tables preserve valid spelling/reading combinations and sense
+restrictions.
+
+Forms include basic affirmative, negative, past, and polite forms;
+connecting, conditional, volitional, imperative, and prohibitive forms;
+and potential, passive, causative, causative-passive, and te-iru groups.
+Derived groups include negative, past, and polite variants.
+Colloquial potential forms such as 出れる and 来れる are labeled separately.
+
+Search accepts supported inflected forms in Japanese and complete romaji,
+including 食べません, dekakerareru, 書ける, and dereru.
+Reverse rules are derived from the conjugation generator. Proposed bases
+are checked against JMdict, their verb classes, and their generated forms.
+Ambiguous interpretations are retained.
+
+Exact ordinary matches precede validated inflection matches, followed by
+broader matches. Entries are deduplicated before pagination. Matching cards
+show conjugation explanations, and recognized whole-query inflections do
+not automatically open the sentence-analysis panel.
+
+The existing Sudachi-based extractor remains a fallback for adjectives
+and some constructions outside the verb generator.
+
+Coverage is not exhaustive. Some special and historical verb classes,
+contractions, and extended auxiliary combinations remain unsupported.
+Generated forms describe grammatical patterns; their use depends on the
+entry's meaning and context.
+
+### Dictionary interface
+
+Language preferences are available through the Options button beside
+Minitsuke, then Languages. Multiple definition languages can be selected;
+at least one must remain enabled.
+
+Search previews show at most four senses with available definitions.
+Word details show all available senses and conjugation tables.
+Cards display usage badges and grammatical labels together, with compact
+spacing and inline alternate spellings.

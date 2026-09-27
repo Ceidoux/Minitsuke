@@ -9,6 +9,7 @@ type ConjugationSectionProps = {
 const GROUP_LABELS: Record<string, string> = {
   basic: 'Basic forms',
   potential: 'Potential — ability',
+  potential_colloquial: 'Potential — colloquial (ら-dropping)',
   passive: 'Passive',
   causative: 'Causative — make or let',
   causative_passive: 'Causative-passive',

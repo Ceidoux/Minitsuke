@@ -45,6 +45,7 @@ export type DictionaryEntry = {
 export type InflectionMatch = {
   source_ids: number[]
   description: string
+  descriptions?: Record<string, string[]>
 }
 
 export type SearchResponse = {

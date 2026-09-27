@@ -1,4 +1,3 @@
-
 import pytest
 
 from deconjugation import extract_inflection_candidate

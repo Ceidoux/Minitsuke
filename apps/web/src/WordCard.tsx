@@ -52,6 +52,7 @@ export default function WordCard({
 <article
   className={[
     'word-card',
+    compact ? 'word-card-compact' : '',
     selected ? 'word-card-selected' : '',
     onSelect ? 'word-card-clickable' : '',
   ].filter(Boolean).join(' ')}
@@ -113,15 +114,14 @@ export default function WordCard({
     title
   )}
 </h3>
+        {alternateWrittenForms.length > 0 && (
+          <span className="alternate-written-forms">
+            Also written:{' '}
+            <span lang="ja">{alternateWrittenForms.join(' / ')}</span>
+          </span>
+        )}
         {entry.is_common && <span className="common-badge">Common</span>}
       </div>
-      {alternateWrittenForms.length > 0 && (
-        <p className="alternate-written-forms">
-          Also written: <span lang="ja">
-            {alternateWrittenForms.join(' / ')}
-          </span>
-        </p>
-      )}
       {inflection && (
         <p className="inflection-note">
           <span lang="ja">{inflection.query}</span>
@@ -158,15 +158,18 @@ export default function WordCard({
             <ol className="sense-list">
               {senses.map((sense) => (
                 <li key={sense.sourcePosition}>
-                  {isUsuallyKana(sense) && (
-                    <span className="usage-badge">
-                      Usually kana
-                    </span>
-                  )}
-                  {sense.parts_of_speech.length > 0 && (
-                    <p className="entry-note">
-                      {sense.parts_of_speech.join('; ')}
-                    </p>
+                  {(isUsuallyKana(sense) ||
+                    sense.parts_of_speech.length > 0) && (
+                    <div className="sense-meta">
+                      {isUsuallyKana(sense) && (
+                        <span className="usage-badge">Usually kana</span>
+                      )}
+                      {sense.parts_of_speech.length > 0 && (
+                        <span className="entry-note">
+                          {sense.parts_of_speech.join(' · ')}
+                        </span>
+                      )}
+                    </div>
                   )}
 
                   <p lang={language.htmlLang}>

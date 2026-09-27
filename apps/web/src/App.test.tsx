@@ -51,6 +51,11 @@ function typeQuery(value: string) {
   })
 }
 
+function openLanguageOptions() {
+  fireEvent.click(screen.getByRole('button', { name: 'Options' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Languages' }))
+}
+
 async function advanceTime(milliseconds = 200) {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(milliseconds)
@@ -224,7 +229,7 @@ test('keeps at least one language selected and sends selected languages', async 
   searchMock.mockResolvedValue(makePage([makeEntry(1, '学校')]))
 
   render(<App />)
-
+  openLanguageOptions()
   const english = screen.getByRole('checkbox', { name: 'English' })
   const french = screen.getByRole('checkbox', { name: 'Français' })
 
@@ -285,7 +290,7 @@ test('changing languages cancels a pending page and resets results', async () =>
   await advanceTime()
 
   const oldSignal = searchMock.mock.calls[1][1].signal
-
+  openLanguageOptions()
   fireEvent.click(screen.getByRole('checkbox', { name: 'Français' }))
   await advanceTime()
 
@@ -326,7 +331,7 @@ test('opens a shared search using URL languages instead of preferences', async (
 
   render(<App />)
   await advanceTime()
-
+  openLanguageOptions()
   expect(screen.getByRole('searchbox')).toHaveValue('school')
   expect(
     screen.getByRole('checkbox', { name: 'English' }),
@@ -378,7 +383,7 @@ test('restores navigation and cancels a pending URL update', async () => {
   })
 
   await advanceTime()
-
+  openLanguageOptions()
   expect(screen.getByRole('searchbox')).toHaveValue('tabe')
   expect(
     screen.getByRole('checkbox', { name: 'Français' }),

@@ -2,6 +2,7 @@ import unicodedata
 
 from sqlalchemy.orm import Session
 
+from conjugation_lookup import find_generated_inflections
 from deconjugation import describe_inflection, extract_inflection_candidate
 from deconjugation_service import find_inflection_matches
 from japanese_text import normalize_reading
@@ -67,21 +68,47 @@ def search_jmdict(
     )
 
     if analysis_text is not None and len(analysis_text) <= MAX_SENTENCE_LENGTH:
-        analyzer = get_sentence_analyzer()
-        candidate = extract_inflection_candidate(
+        matches, descriptions = find_generated_inflections(
+            session,
             analysis_text,
-            analyzer.analyze(analysis_text),
         )
 
-        if candidate is not None:
-            matches = find_inflection_matches(session, candidate)
+        if matches:
             inflection_entry_ids = tuple(match.entry_id for match in matches)
-
-            if matches:
-                inflection = InflectionResponse(
-                    source_ids=[match.source_id for match in matches],
-                    description=describe_inflection(candidate),
+            explanations = list(
+                dict.fromkeys(
+                    explanation
+                    for entry_descriptions in descriptions.values()
+                    for explanation in entry_descriptions
                 )
+            )
+            inflection = InflectionResponse(
+                source_ids=[match.source_id for match in matches],
+                description=" / ".join(explanations),
+                descriptions=descriptions,
+            )
+        else:
+            # Retain existing support for adjectives and constructions
+            # not yet covered by the verb generator.
+            analyzer = get_sentence_analyzer()
+            candidate = extract_inflection_candidate(
+                analysis_text,
+                analyzer.analyze(analysis_text),
+            )
+
+            if candidate is not None:
+                matches = find_inflection_matches(session, candidate)
+                inflection_entry_ids = tuple(match.entry_id for match in matches)
+
+                if matches:
+                    explanation = describe_inflection(candidate)
+                    inflection = InflectionResponse(
+                        source_ids=[match.source_id for match in matches],
+                        description=explanation,
+                        descriptions={
+                            match.source_id: [explanation] for match in matches
+                        },
+                    )
     if all(_is_kana(character) for character in normalized):
         page = find_reading_matches(
             session,

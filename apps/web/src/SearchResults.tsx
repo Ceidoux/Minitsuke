@@ -104,20 +104,18 @@ export default function SearchResults({
         />
       )}
 
-      <section aria-labelledby="results-heading">
-        <h2 id="results-heading">Results</h2>
+      <section aria-label="Results">
+        {loading && (
+          <p className="search-status" role="status">
+            {page ? 'Loading more results…' : 'Searching…'}
+          </p>
+        )}
 
-        <p role="status">
-          {loading
-            ? page
-              ? 'Loading more results…'
-              : 'Searching…'
-            : error
-              ? 'Search could not be completed.'
-              : page?.results.length === 0
-                ? `No results for “${query}”.`
-                : `${page?.results.length ?? 0} results shown.`}
-        </p>
+        {!loading && !error && page?.results.length === 0 && (
+          <p className="search-status" role="status">
+            No results for “{query}”.
+          </p>
+        )}
 
         {error && (
           <div className="search-error">
@@ -140,7 +138,10 @@ export default function SearchResults({
                 page.inflection?.source_ids.includes(entry.source_id)
                   ? {
                       query: page.query,
-                      description: page.inflection.description,
+                      description:
+                        page.inflection.descriptions?.[
+                          String(entry.source_id)
+                        ]?.join(' / ') ?? page.inflection.description,
                     }
                   : undefined
               }

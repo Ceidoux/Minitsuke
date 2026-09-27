@@ -262,3 +262,48 @@ def test_rejects_mismatched_or_unsupported_classes(
 ):
     with pytest.raises(ValueError):
         conjugate_verb(written, reading, verb_class)
+
+
+@pytest.mark.parametrize(
+    ("written", "reading", "verb_class", "form", "expected", "kana"),
+    [
+        ("出る", "でる", "v1", "nonpast", "出れる", "でれる"),
+        ("食べる", "たべる", "v1", "negative", "食べれない", "たべれない"),
+        ("見る", "みる", "v1", "polite", "見れます", "みれます"),
+        ("来る", "くる", "vk", "nonpast", "来れる", "これる"),
+        (
+            "出る",
+            "でる",
+            "v1",
+            "polite_negative_past",
+            "出れませんでした",
+            "でれませんでした",
+        ),
+    ],
+)
+def test_generates_colloquial_potential(
+    written: str,
+    reading: str,
+    verb_class: str,
+    form: str,
+    expected: str,
+    kana: str,
+):
+    forms = conjugate_verb(written, reading, verb_class)
+    result = next(
+        item
+        for item in forms
+        if item.group == "potential_colloquial" and item.form == form
+    )
+
+    assert result.written == expected
+    assert result.reading == kana
+
+
+def test_colloquial_potential_does_not_replace_standard_or_passive():
+    forms = conjugate_verb("出る", "でる", "v1")
+    nonpast = {item.group: item.written for item in forms if item.form == "nonpast"}
+
+    assert nonpast["potential"] == "出られる"
+    assert nonpast["passive"] == "出られる"
+    assert nonpast["potential_colloquial"] == "出れる"
