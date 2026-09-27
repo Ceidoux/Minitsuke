@@ -6,6 +6,7 @@ from jmdict import JmdictEntry
 from models import (
     JmdictEntryRecord,
     JmdictGlossRecord,
+    JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
@@ -143,7 +144,14 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
                     position=label_position,
                 )
             )
-
+        for misc_position, label in enumerate(sense.misc, start=1):
+            session.add(
+                JmdictMiscRecord(
+                    sense_id=sense_record.id,
+                    label=label,
+                    position=misc_position,
+                )
+            )
         for text in dict.fromkeys(sense.restricted_to_written_forms):
             session.add(
                 JmdictSenseWrittenFormRestrictionRecord(

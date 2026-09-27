@@ -18,6 +18,7 @@ class JmdictSense:
     restricted_to_written_forms: tuple[str, ...] = ()
     restricted_to_readings: tuple[str, ...] = ()
     parts_of_speech: tuple[str, ...] = ()
+    misc: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,9 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
                     if node.text is not None
                 ),
                 parts_of_speech=parts_of_speech,
+                misc=tuple(
+                    node.text for node in sense.findall("misc") if node.text is not None
+                ),
             )
         )
     if not senses:

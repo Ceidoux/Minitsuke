@@ -1,3 +1,4 @@
+import { getEntryHeading, isUsuallyKana } from './entry-presentation'
 import type { DictionaryEntry } from './dictionary-api'
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 
@@ -12,8 +13,7 @@ export default function WordCard({
   selected = false,
   onSelect,
 }: WordCardProps) {
-  const title =
-    entry.written_forms.join(' / ') || entry.readings[0]?.text || 'Entry'
+  const { title, alternateWrittenForms } = getEntryHeading(entry)
 
   const languageGroups = DICTIONARY_LANGUAGES
     .map((language) => ({
@@ -97,7 +97,13 @@ export default function WordCard({
 </h3>
         {entry.is_common && <span className="common-badge">Common</span>}
       </div>
-
+      {alternateWrittenForms.length > 0 && (
+        <p className="alternate-written-forms">
+          Also written: <span lang="ja">
+            {alternateWrittenForms.join(' / ')}
+          </span>
+        </p>
+      )}
       <ul className="reading-list">
         {entry.readings.map((reading) => (
           <li key={reading.text}>
@@ -127,6 +133,11 @@ export default function WordCard({
             <ol className="sense-list">
               {senses.map((sense) => (
                 <li key={sense.sourcePosition}>
+                  {isUsuallyKana(sense) && (
+                    <span className="usage-badge">
+                      Usually kana
+                    </span>
+                  )}
                   {sense.parts_of_speech.length > 0 && (
                     <p className="entry-note">
                       {sense.parts_of_speech.join('; ')}

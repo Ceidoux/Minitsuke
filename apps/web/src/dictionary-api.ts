@@ -14,6 +14,7 @@ export type DictionarySense = {
   parts_of_speech: string[]
   restricted_to_written_forms: string[]
   restricted_to_readings: string[]
+  misc?: string[]
 }
 
 export type DictionaryEntry = {

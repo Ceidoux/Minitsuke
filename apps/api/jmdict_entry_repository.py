@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from models import (
     JmdictEntryRecord,
     JmdictGlossRecord,
+    JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
@@ -75,6 +76,7 @@ class SenseDetails:
     senses: tuple[JmdictSenseRecord, ...]
     glosses: tuple[JmdictGlossRecord, ...]
     parts_of_speech: tuple[JmdictPartOfSpeechRecord, ...]
+    misc: tuple[JmdictMiscRecord, ...] = ()
 
 
 def load_sense_details(
@@ -121,11 +123,24 @@ def load_sense_details(
             JmdictPartOfSpeechRecord.position,
         )
     ).all()
-
+    misc = session.scalars(
+        select(JmdictMiscRecord)
+        .join(
+            JmdictSenseRecord,
+            JmdictSenseRecord.id == JmdictMiscRecord.sense_id,
+        )
+        .where(JmdictSenseRecord.entry_id.in_(entry_ids))
+        .order_by(
+            JmdictSenseRecord.entry_id,
+            JmdictSenseRecord.position,
+            JmdictMiscRecord.position,
+        )
+    ).all()
     return SenseDetails(
         senses=tuple(senses),
         glosses=tuple(glosses),
         parts_of_speech=tuple(parts_of_speech),
+        misc=tuple(misc),
     )
 
 

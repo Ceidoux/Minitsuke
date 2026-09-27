@@ -9,6 +9,8 @@ dependencies = [
     "pydantic>=2.13.5",
     "romkan2>=0.1.1",
     "sqlalchemy>=2.0.54",
+    "sudachidict-core==20260723",
+    "sudachipy==0.6.11",
 ]
 
 [dependency-groups]

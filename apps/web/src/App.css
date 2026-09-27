@@ -272,3 +272,78 @@ button:focus-visible {
   user-select: text;
   cursor: text;
 }
+
+.usage-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  margin-bottom: 0.35rem;
+  border: 1px solid #b8d5cd;
+  border-radius: 999px;
+  background: #edf7f3;
+  color: #245346;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.alternate-written-forms {
+  color: #555;
+  margin-top: 0;
+}
+
+.sentence-analysis {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid #cbd5d1;
+  border-radius: 0.75rem;
+  background: #f5faf7;
+}
+
+.sentence-analysis h2 {
+  margin-top: 0;
+}
+
+.sentence-segments {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 2.4;
+}
+
+.sentence-segment {
+  display: inline;
+  margin: 0.15rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid #a6bdb2;
+  border-radius: 0.4rem;
+  background: white;
+  color: #173f30;
+  font: inherit;
+  cursor: pointer;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.sentence-segment:hover,
+.sentence-segment[aria-pressed='true'] {
+  background: #dceee3;
+}
+
+.sentence-segment:focus-visible {
+  outline: 2px solid #246747;
+  outline-offset: 2px;
+}
+
+.sentence-unmatched {
+  color: #555;
+}
+
+.sentence-candidates {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #cbd5d1;
+}
+
+.sentence-candidates h3 {
+  margin-top: 0;
+}
