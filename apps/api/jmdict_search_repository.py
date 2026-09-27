@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from unicodedata import normalize
 
 from sqlalchemy import (
     Integer,
@@ -7,6 +8,7 @@ from sqlalchemy import (
     false,
     func,
     literal,
+    literal_column,
     or_,
     select,
     union_all,
@@ -19,8 +21,12 @@ from japanese_text import normalize_reading, normalize_written_form
 from models import (
     JmdictEntryRecord,
     JmdictGlossRecord,
+    JmdictMiscRecord,
     JmdictReadingRecord,
+    JmdictReadingRestrictionRecord,
+    JmdictSenseReadingRestrictionRecord,
     JmdictSenseRecord,
+    JmdictSenseWrittenFormRestrictionRecord,
     JmdictWrittenFormRecord,
 )
 from romaji import interpret_romaji
@@ -40,11 +46,62 @@ class MatchPage:
     has_more: bool
 
 
+def _reading_kana_preference():
+    reading = JmdictReadingRecord
+    sense = JmdictSenseRecord
+    reading_restriction = JmdictSenseReadingRestrictionRecord
+    written_restriction = JmdictSenseWrittenFormRestrictionRecord
+
+    has_reading_restriction = (
+        select(reading_restriction.sense_id)
+        .where(reading_restriction.sense_id == sense.id)
+        .correlate(sense)
+        .exists()
+    )
+
+    allows_this_reading = (
+        select(reading_restriction.sense_id)
+        .where(
+            reading_restriction.sense_id == sense.id,
+            reading_restriction.reading_id == reading.id,
+        )
+        .correlate(sense, reading)
+        .exists()
+    )
+
+    has_written_restriction = (
+        select(written_restriction.sense_id)
+        .where(written_restriction.sense_id == sense.id)
+        .correlate(sense)
+        .exists()
+    )
+
+    has_applicable_tag = (
+        select(sense.id)
+        .join(
+            JmdictMiscRecord,
+            JmdictMiscRecord.sense_id == sense.id,
+        )
+        .where(
+            sense.entry_id == reading.entry_id,
+            JmdictMiscRecord.label == "word usually written using kana alone",
+            ~has_reading_restriction | allows_this_reading,
+            ~has_written_restriction,
+        )
+        .correlate(reading)
+        .exists()
+    )
+
+    return case((has_applicable_tag, 0), else_=1)
+
+
 def _candidate_order(candidates: Subquery):
     return (
         candidates.c.tier,
         candidates.c.sense_position,
         candidates.c.gloss_position,
+        candidates.c.reading_position,
+        candidates.c.kana_preference,
         case(
             (candidates.c.tier == 3, candidates.c.gloss_length),
             else_=0,
@@ -59,6 +116,8 @@ def _best_candidate_per_entry(candidates: Subquery) -> Subquery:
         candidates.c.sense_position,
         candidates.c.gloss_position,
         candidates.c.gloss_length,
+        candidates.c.reading_position,
+        candidates.c.kana_preference,
         func.row_number()
         .over(
             partition_by=candidates.c.entry_id,
@@ -74,6 +133,8 @@ def _best_candidate_per_entry(candidates: Subquery) -> Subquery:
             numbered.c.sense_position,
             numbered.c.gloss_position,
             numbered.c.gloss_length,
+            numbered.c.reading_position,
+            numbered.c.kana_preference,
         )
         .where(numbered.c.candidate_number == 1)
         .subquery()
@@ -93,10 +154,17 @@ def _paginate_matches(
     if offset < 0:
         raise ValueError("Offset must not be negative")
 
-    ordering = [
-        best_matches.c.tier,
-        JmdictEntryRecord.is_common.desc(),
-    ]
+    ordering = []
+
+    if "script_group" in best_matches.c:
+        ordering.append(best_matches.c.script_group)
+
+    ordering.extend(
+        [
+            best_matches.c.tier,
+            JmdictEntryRecord.is_common.desc(),
+        ]
+    )
 
     if "sense_position" in best_matches.c:
         ordering.extend(
@@ -105,7 +173,10 @@ def _paginate_matches(
                 best_matches.c.gloss_position,
             ]
         )
-
+    if "reading_position" in best_matches.c:
+        ordering.append(best_matches.c.reading_position)
+    if "kana_preference" in best_matches.c:
+        ordering.append(best_matches.c.kana_preference)
     ordering.append(JmdictEntryRecord.frequency_band.asc().nulls_last())
 
     if "gloss_length" in best_matches.c:
@@ -150,6 +221,51 @@ def _paginate_matches(
     )
 
 
+def _original_script_match(original: str):
+    reading = JmdictReadingRecord
+    written = JmdictWrittenFormRecord
+    restriction = JmdictReadingRestrictionRecord
+
+    original_reading = func.normalize(
+        reading.text,
+        literal_column("NFKC"),
+    ).contains(original, autoescape=True)
+
+    has_restrictions = (
+        select(restriction.reading_id)
+        .where(restriction.reading_id == reading.id)
+        .correlate(reading)
+        .exists()
+    )
+
+    allows_written_form = (
+        select(restriction.reading_id)
+        .where(
+            restriction.reading_id == reading.id,
+            restriction.written_form_id == written.id,
+        )
+        .correlate(reading, written)
+        .exists()
+    )
+
+    matching_written_form = (
+        select(written.id)
+        .where(
+            written.entry_id == reading.entry_id,
+            ~reading.no_kanji,
+            ~has_restrictions | allows_written_form,
+            func.normalize(
+                written.text,
+                literal_column("NFKC"),
+            ).contains(original, autoescape=True),
+        )
+        .correlate(reading)
+        .exists()
+    )
+
+    return original_reading | matching_written_form
+
+
 def find_reading_matches(
     session: Session,
     query: str,
@@ -157,7 +273,9 @@ def find_reading_matches(
     limit: int = 30,
     offset: int = 0,
 ) -> MatchPage:
-    normalized = normalize_reading(query.strip())
+    original = normalize("NFKC", query.strip())
+    normalized = normalize_reading(original)
+
     if not normalized:
         raise ValueError("Search query must not be empty")
 
@@ -185,13 +303,52 @@ def find_reading_matches(
         else_=4,
     )
 
-    best_matches = (
+    script_group = case(
+        (original_substring & _original_script_match(original), 0),
+        (original_substring, 1),
+        else_=2,
+    )
+
+    candidates = (
         select(
             JmdictReadingRecord.entry_id.label("entry_id"),
-            func.min(reading_tier).label("tier"),
+            reading_tier.label("tier"),
+            script_group.label("script_group"),
+            JmdictReadingRecord.position.label("reading_position"),
+            _reading_kana_preference().label("kana_preference"),
         )
         .where(original_substring | alternative_prefix)
-        .group_by(JmdictReadingRecord.entry_id)
+        .subquery()
+    )
+
+    numbered = select(
+        candidates.c.entry_id,
+        candidates.c.tier,
+        candidates.c.script_group,
+        candidates.c.reading_position,
+        candidates.c.kana_preference,
+        func.row_number()
+        .over(
+            partition_by=candidates.c.entry_id,
+            order_by=(
+                candidates.c.script_group,
+                candidates.c.tier,
+                candidates.c.reading_position,
+                candidates.c.kana_preference,
+            ),
+        )
+        .label("candidate_number"),
+    ).subquery()
+
+    best_matches = (
+        select(
+            numbered.c.entry_id,
+            numbered.c.tier,
+            numbered.c.script_group,
+            numbered.c.reading_position,
+            numbered.c.kana_preference,
+        )
+        .where(numbered.c.candidate_number == 1)
         .subquery()
     )
 
@@ -275,6 +432,8 @@ def _gloss_candidates(
             ).label("gloss_length"),
             JmdictSenseRecord.position.label("sense_position"),
             JmdictGlossRecord.position.label("gloss_position"),
+            literal(1).label("reading_position"),
+            literal(1).label("kana_preference"),
         )
         .select_from(JmdictGlossRecord)
         .join(
@@ -333,6 +492,8 @@ def find_latin_matches(
         literal(None, type_=Integer).label("gloss_length"),
         literal(0).label("sense_position"),
         literal(0).label("gloss_position"),
+        literal(1).label("reading_position"),
+        literal(1).label("kana_preference"),
     ).where(written.contains(cleaned, autoescape=True))
 
     # Search readings through complete and unfinished romaji interpretations.
@@ -364,6 +525,8 @@ def find_latin_matches(
         literal(None, type_=Integer).label("gloss_length"),
         literal(0).label("sense_position"),
         literal(0).label("gloss_position"),
+        JmdictReadingRecord.position.label("reading_position"),
+        _reading_kana_preference().label("kana_preference"),
     ).where(or_(*reading_conditions))
 
     alternatives = (
@@ -389,6 +552,8 @@ def find_latin_matches(
         literal(None, type_=Integer).label("gloss_length"),
         literal(0).label("sense_position"),
         literal(0).label("gloss_position"),
+        JmdictReadingRecord.position.label("reading_position"),
+        _reading_kana_preference().label("kana_preference"),
     ).where(alternative_prefix)
     gloss_candidates = _gloss_candidates(query, languages)
 
@@ -402,6 +567,8 @@ def find_latin_matches(
             gloss_candidates.c.gloss_length,
             gloss_candidates.c.sense_position,
             gloss_candidates.c.gloss_position,
+            gloss_candidates.c.reading_position,
+            gloss_candidates.c.kana_preference,
         ),
     ).subquery()
 

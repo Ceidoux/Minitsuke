@@ -42,6 +42,10 @@ def load_entries(
 
     glosses_by_sense = {sense.id: [] for sense in details.senses}
     parts_by_sense = {sense.id: [] for sense in details.senses}
+    misc_by_sense = {sense.id: [] for sense in details.senses}
+
+    for tag in details.misc:
+        misc_by_sense[tag.sense_id].append(tag.label)
 
     for gloss in details.glosses:
         glosses_by_sense[gloss.sense_id].append(
@@ -90,6 +94,7 @@ def load_entries(
             JmdictSenseResponse(
                 glosses=glosses_by_sense[sense.id],
                 parts_of_speech=parts_by_sense[sense.id],
+                misc=misc_by_sense[sense.id],
                 restricted_to_written_forms=[
                     form.text for form in forms if form.id in forms_by_sense[sense.id]
                 ],

@@ -8,8 +8,10 @@ from jmdict_entry_service import load_entry_by_source_id
 from jmdict_search import search_jmdict
 from schemas import JmdictEntryResponse, JmdictSearchResponse
 from search import normalize_query
+from sentence_api import router as sentence_router
 
 app = FastAPI(title="Minitsuke")
+app.include_router(sentence_router)
 
 
 @app.get("/api/v1/search")

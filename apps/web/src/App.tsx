@@ -4,6 +4,7 @@ import WordDetail from './WordDetail'
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 import { useSearchLocation } from './use-search-location'
 import './App.css'
+import SentenceAnalysis from './SentenceAnalysis'
 
 export default function App() {
   const {
@@ -22,6 +23,10 @@ export default function App() {
   const closeButton = useRef<HTMLButtonElement | null>(null)
 
   const normalizedQuery = query.trim()
+  const containsJapanese =
+    /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(
+      normalizedQuery,
+    )
   const searchKey = JSON.stringify([normalizedQuery, languages])
   const detailKey = JSON.stringify([selectedSourceId, languages])
 
@@ -131,13 +136,25 @@ export default function App() {
           ) : normalizedQuery === '' ? (
             <p>Type a word to begin.</p>
           ) : (
-            <SearchResults
-              key={searchKey}
-              query={normalizedQuery}
-              languages={languages}
-              selectedSourceId={selectedSourceId}
-              onSelect={selectEntry}
-            />
+            <>
+              {containsJapanese && (
+                <SentenceAnalysis
+                  key={normalizedQuery}
+                  query={normalizedQuery}
+                  languages={languages}
+                  selectedSourceId={selectedSourceId}
+                  onSelect={selectEntry}
+                />
+              )}
+
+              <SearchResults
+                key={searchKey}
+                query={normalizedQuery}
+                languages={languages}
+                selectedSourceId={selectedSourceId}
+                onSelect={selectEntry}
+              />
+            </>
           )}
         </div>
 

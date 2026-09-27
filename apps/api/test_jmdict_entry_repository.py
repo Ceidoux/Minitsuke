@@ -235,7 +235,7 @@ def test_sense_query_count_is_constant(
     assert len(data.senses) == entry_count
     assert len(data.glosses) == entry_count
     assert data.parts_of_speech == ()
-    assert len(statements) == 3
+    assert len(statements) == 4
 
 
 def add_restricted_entry(session: Session, source_id: int) -> int:

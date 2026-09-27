@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class WordEntry(BaseModel):
@@ -28,6 +28,7 @@ class JmdictSenseResponse(BaseModel):
     parts_of_speech: list[str]
     restricted_to_written_forms: list[str]
     restricted_to_readings: list[str]
+    misc: list[str] = Field(default_factory=list)
 
 
 class JmdictEntryResponse(BaseModel):

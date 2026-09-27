@@ -234,6 +234,28 @@ class JmdictPartOfSpeechRecord(Base):
     position: Mapped[int] = mapped_column()
 
 
+class JmdictMiscRecord(Base):
+    __tablename__ = "jmdict_misc"
+    __table_args__ = (
+        UniqueConstraint(
+            "sense_id",
+            "position",
+            name="uq_jmdict_misc_sense_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_misc_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sense_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_senses.id", ondelete="CASCADE"),
+    )
+    label: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
+
+
 class JmdictSenseWrittenFormRestrictionRecord(Base):
     __tablename__ = "jmdict_sense_written_form_restrictions"
     __table_args__ = (
