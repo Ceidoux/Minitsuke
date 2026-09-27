@@ -1,5 +1,3 @@
-from functools import lru_cache
-from threading import Lock
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,7 +5,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_session
-from sentence_analysis import MAX_SENTENCE_LENGTH, SentenceAnalyzer
+from sentence_analysis import (
+    MAX_SENTENCE_LENGTH,
+    SentenceAnalyzer,
+    get_sentence_analyzer,
+)
 from sentence_grouping import group_sentence
 from sentence_service import resolve_sentence
 
@@ -42,19 +44,6 @@ class SentenceAnalysisResponse(BaseModel):
     text: str
     offset_unit: str = "unicode_code_points"
     groups: list[SentenceGroupResponse]
-
-
-_analyzer_lock = Lock()
-
-
-@lru_cache(maxsize=1)
-def _cached_analyzer() -> SentenceAnalyzer:
-    return SentenceAnalyzer()
-
-
-def get_sentence_analyzer() -> SentenceAnalyzer:
-    with _analyzer_lock:
-        return _cached_analyzer()
 
 
 @router.post("/analyze", response_model=SentenceAnalysisResponse)

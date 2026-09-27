@@ -3,6 +3,7 @@ import { fetchDictionaryEntry } from './dictionary-api'
 import type { DictionaryEntry } from './dictionary-api'
 import type { DictionaryLanguageCode } from './dictionary-languages'
 import WordCard from './WordCard'
+import ConjugationSection from './ConjugationSection'
 
 type WordDetailProps = {
   sourceId: number
@@ -73,6 +74,11 @@ export default function WordDetail({
       {entry && (
         <>
           <WordCard entry={entry} />
+          <ConjugationSection
+            key={entry.source_id}
+            tables={entry.conjugations ?? []}
+            incomplete={entry.conjugations_incomplete ?? false}
+          />
           <p className="entry-note">JMdict entry: {entry.source_id}</p>
         </>
       )}

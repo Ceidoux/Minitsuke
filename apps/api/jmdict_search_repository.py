@@ -141,12 +141,51 @@ def _best_candidate_per_entry(candidates: Subquery) -> Subquery:
     )
 
 
+def _include_inflection_matches(
+    best_matches: Subquery,
+    entry_ids: tuple[int, ...],
+) -> Subquery:
+    entry = JmdictEntryRecord
+
+    exact_ids = select(best_matches.c.entry_id).where(best_matches.c.tier == 0)
+
+    ordinary = select(
+        *best_matches.c,
+        case(
+            (best_matches.c.tier == 0, 0),
+            else_=2,
+        ).label("match_group"),
+    ).where((best_matches.c.tier == 0) | best_matches.c.entry_id.not_in(entry_ids))
+
+    inflected_columns = [
+        entry.id.label(column.name)
+        if column.name == "entry_id"
+        else literal(0).label(column.name)
+        for column in best_matches.c
+    ]
+
+    inflected = (
+        select(
+            *inflected_columns,
+            literal(1).label("match_group"),
+        )
+        .select_from(entry)
+        .where(
+            entry.id.in_(entry_ids),
+            entry.id.not_in(exact_ids),
+        )
+    )
+
+    return union_all(ordinary, inflected).subquery()
+
+
 def _paginate_matches(
     session: Session,
     best_matches: Subquery,
     *,
     limit: int,
     offset: int,
+    inflection_entry_ids: tuple[int, ...] = (),
 ) -> MatchPage:
     if not 1 <= limit <= 100:
         raise ValueError("Limit must be between 1 and 100")
@@ -154,7 +193,16 @@ def _paginate_matches(
     if offset < 0:
         raise ValueError("Offset must not be negative")
 
+    if inflection_entry_ids:
+        best_matches = _include_inflection_matches(
+            best_matches,
+            inflection_entry_ids,
+        )
+
     ordering = []
+
+    if "match_group" in best_matches.c:
+        ordering.append(best_matches.c.match_group)
 
     if "script_group" in best_matches.c:
         ordering.append(best_matches.c.script_group)
@@ -272,6 +320,7 @@ def find_reading_matches(
     *,
     limit: int = 30,
     offset: int = 0,
+    inflection_entry_ids: tuple[int, ...] = (),
 ) -> MatchPage:
     original = normalize("NFKC", query.strip())
     normalized = normalize_reading(original)
@@ -357,6 +406,7 @@ def find_reading_matches(
         best_matches,
         limit=limit,
         offset=offset,
+        inflection_entry_ids=inflection_entry_ids,
     )
 
 
@@ -366,6 +416,7 @@ def find_written_form_matches(
     *,
     limit: int = 30,
     offset: int = 0,
+    inflection_entry_ids: tuple[int, ...] = (),
 ) -> MatchPage:
     cleaned = normalize_written_form(query.strip())
     if not cleaned:
@@ -392,6 +443,7 @@ def find_written_form_matches(
         best_matches,
         limit=limit,
         offset=offset,
+        inflection_entry_ids=inflection_entry_ids,
     )
 
 
@@ -475,6 +527,7 @@ def find_latin_matches(
     languages: tuple[str, ...] = ("eng",),
     limit: int = 30,
     offset: int = 0,
+    inflection_entry_ids: tuple[int, ...] = (),
 ) -> MatchPage:
     cleaned = normalize_written_form(query.strip())
     if not cleaned:
@@ -579,4 +632,5 @@ def find_latin_matches(
         best_matches,
         limit=limit,
         offset=offset,
+        inflection_entry_ids=inflection_entry_ids,
     )

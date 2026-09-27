@@ -17,12 +17,35 @@ export type DictionarySense = {
   misc?: string[]
 }
 
+export type ConjugatedForm = {
+  group: string
+  form: string
+  written: string
+  reading: string
+}
+
+export type ConjugationTable = {
+  written: string
+  reading: string
+  verb_class: string
+  sense_positions: number[]
+  forms: ConjugatedForm[]
+}
+
 export type DictionaryEntry = {
   source_id: number
   is_common: boolean
   written_forms: string[]
   readings: DictionaryReading[]
   senses: DictionarySense[]
+  conjugations?: ConjugationTable[]
+  conjugations_incomplete?: boolean
+}
+
+export type InflectionMatch = {
+  source_ids: number[]
+  description: string
+  descriptions?: Record<string, string[]>
 }
 
 export type SearchResponse = {
@@ -31,6 +54,7 @@ export type SearchResponse = {
   limit: number
   offset: number
   has_more: boolean
+  inflection?: InflectionMatch | null
 }
 
 type SearchOptions = {

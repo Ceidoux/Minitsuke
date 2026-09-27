@@ -1,0 +1,357 @@
+import pytest
+from sqlalchemy.orm import Session
+
+from jmdict import JmdictEntry, JmdictGloss, JmdictReading, JmdictSense
+from jmdict_importer import save_jmdict_entry
+from jmdict_search import search_jmdict
+
+
+def add_entry(
+    session: Session,
+    source_id: int,
+    *,
+    forms: tuple[str, ...],
+    reading: str,
+    label: str,
+) -> None:
+    save_jmdict_entry(
+        session,
+        JmdictEntry(
+            source_id=source_id,
+            written_forms=forms,
+            readings=(JmdictReading(text=reading),),
+            senses=(
+                JmdictSense(
+                    glosses=(JmdictGloss(text="test definition", language="eng"),),
+                    parts_of_speech=(label,),
+                ),
+            ),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "forms", "reading", "label"),
+    [
+        ("食べました", ("食べる",), "たべる", "Ichidan verb"),
+        ("たべました", ("食べる",), "たべる", "Ichidan verb"),
+        ("されている", ("為る",), "する", "suru verb - included"),
+        (
+            "確認しました",
+            ("確認",),
+            "かくにん",
+            "noun or participle which takes the aux. verb suru",
+        ),
+        ("高かった", ("高い",), "たかい", "adjective (keiyoushi)"),
+    ],
+)
+def test_search_returns_base_entry(
+    db_session: Session,
+    query: str,
+    forms: tuple[str, ...],
+    reading: str,
+    label: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=forms,
+        reading=reading,
+        label=label,
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.has_more is False
+
+
+def test_combines_matches_before_pagination(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べました",),
+        reading="たべました",
+        label="expression",
+    )
+    add_entry(
+        db_session,
+        200,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+    add_entry(
+        db_session,
+        300,
+        forms=("食べましたか",),
+        reading="たべましたか",
+        label="expression",
+    )
+
+    pages = [
+        search_jmdict(db_session, "食べました", limit=1, offset=offset)
+        for offset in range(4)
+    ]
+
+    assert [[entry.source_id for entry in page.results] for page in pages] == [
+        [100],
+        [200],
+        [300],
+        [],
+    ]
+    assert [page.has_more for page in pages] == [True, True, False, False]
+
+
+@pytest.mark.parametrize("exact", [True, False])
+def test_deduplicates_direct_and_inflected_matches(
+    db_session: Session,
+    exact: bool,
+):
+    # Synthetic entry to exercise overlap between both match sources.
+    extra_form = "食べました" if exact else "食べましたか"
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる", extra_form),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    first = search_jmdict(db_session, "食べました", limit=1)
+    second = search_jmdict(db_session, "食べました", limit=1, offset=1)
+
+    assert [entry.source_id for entry in first.results] == [100]
+    assert first.has_more is False
+    assert second.results == []
+
+
+def test_excludes_grammatically_incompatible_entry(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        forms=("確認",),
+        reading="かくにん",
+        label="noun (common) (futsuumeishi)",
+    )
+
+    response = search_jmdict(db_session, "確認しました")
+
+    assert response.results == []
+
+
+def test_returns_inflection_explanation_beyond_first_page(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    for offset in (0, 30):
+        response = search_jmdict(
+            db_session,
+            "食べました",
+            offset=offset,
+        )
+
+        assert response.inflection is not None
+        assert response.inflection.source_ids == [100]
+        assert response.inflection.description == "polite past"
+
+
+def test_unvalidated_construction_has_no_inflection_metadata(
+    db_session: Session,
+):
+    response = search_jmdict(db_session, "食べました")
+
+    assert response.inflection is None
+
+
+@pytest.mark.parametrize(
+    ("query", "description"),
+    [
+        ("tabemasu", "polite non-past"),
+        ("TABEMASU", "polite non-past"),
+        ("tabemashita", "polite past"),
+    ],
+)
+def test_romaji_inflection_search(
+    db_session: Session,
+    query: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert response.query == query
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.source_ids == [100]
+    assert response.inflection.description == description
+
+
+def test_romaji_preserves_direct_matches_and_pagination(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("たべます",),
+        reading="たべます",
+        label="expression",
+    )
+    add_entry(
+        db_session,
+        200,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    first = search_jmdict(db_session, "tabemasu", limit=1)
+    second = search_jmdict(db_session, "tabemasu", limit=1, offset=1)
+
+    assert [entry.source_id for entry in first.results] == [100]
+    assert first.has_more is True
+    assert [entry.source_id for entry in second.results] == [200]
+    assert second.has_more is False
+    assert first.inflection is not None
+    assert first.inflection.source_ids == [200]
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "label", "expected"),
+    [
+        (
+            "でかけられる",
+            "出かける",
+            "でかける",
+            "Ichidan verb",
+            {"potential", "passive"},
+        ),
+        (
+            "dekakerareru",
+            "出かける",
+            "でかける",
+            "Ichidan verb",
+            {"potential", "passive"},
+        ),
+        (
+            "食べません",
+            "食べる",
+            "たべる",
+            "Ichidan verb",
+            {"polite negative"},
+        ),
+        (
+            "tabemasen",
+            "食べる",
+            "たべる",
+            "Ichidan verb",
+            {"polite negative"},
+        ),
+        (
+            "食べませんでした",
+            "食べる",
+            "たべる",
+            "Ichidan verb",
+            {"polite negative past"},
+        ),
+        (
+            "書ける",
+            "書く",
+            "かく",
+            "Godan verb with 'ku' ending",
+            {"potential"},
+        ),
+        (
+            "kakemasen",
+            "書く",
+            "かく",
+            "Godan verb with 'ku' ending",
+            {"potential, polite negative"},
+        ),
+        (
+            "確認しません",
+            "確認",
+            "かくにん",
+            "noun or participle which takes the aux. verb suru",
+            {"polite negative"},
+        ),
+    ],
+)
+def test_search_validates_generated_forms(
+    db_session: Session,
+    query: str,
+    written: str,
+    reading: str,
+    label: str,
+    expected: set[str],
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,),
+        reading=reading,
+        label=label,
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert set(response.inflection.descriptions[100]) == expected
+
+
+def test_generated_lookup_requires_the_correct_verb_class(
+    db_session: Session,
+):
+    from conjugation_lookup import find_generated_inflections
+
+    add_entry(
+        db_session,
+        100,
+        forms=("帰る",),
+        reading="かえる",
+        label="Godan verb with 'ru' ending",
+    )
+
+    # 帰る is Godan: the polite negative is 帰りません.
+    matches, descriptions = find_generated_inflections(
+        db_session,
+        "帰ません",
+    )
+
+    assert matches == ()
+    assert descriptions == {}
+
+
+@pytest.mark.parametrize("query", ["出れる", "でれる", "dereru"])
+def test_search_finds_colloquial_potential(
+    db_session: Session,
+    query: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("出る",),
+        reading="でる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == ["potential — colloquial"]

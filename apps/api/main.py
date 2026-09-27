@@ -3,10 +3,11 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from sqlalchemy.orm import Session
 
+from conjugation_service import build_conjugation_tables
 from database import get_session
 from jmdict_entry_service import load_entry_by_source_id
 from jmdict_search import search_jmdict
-from schemas import JmdictEntryResponse, JmdictSearchResponse
+from schemas import JmdictEntryDetailResponse, JmdictSearchResponse
 from search import normalize_query
 from sentence_api import router as sentence_router
 
@@ -48,7 +49,7 @@ def get_entry(
     source_id: Annotated[int, Path(ge=1, le=2_147_483_647)],
     session: Annotated[Session, Depends(get_session)],
     languages: Annotated[list[str] | None, Query()] = None,
-) -> JmdictEntryResponse:
+) -> JmdictEntryDetailResponse:
     enabled_languages = (
         ("eng",) if languages is None else tuple(dict.fromkeys(languages))
     )
@@ -65,4 +66,10 @@ def get_entry(
             detail="Dictionary entry not found",
         )
 
-    return entry
+    tables, incomplete = build_conjugation_tables(entry)
+
+    return JmdictEntryDetailResponse(
+        **entry.model_dump(),
+        conjugations=tables,
+        conjugations_incomplete=incomplete,
+    )

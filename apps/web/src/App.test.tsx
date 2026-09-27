@@ -8,6 +8,10 @@ vi.mock('./dictionary-api', () => ({
   searchDictionary: vi.fn(),
 }))
 
+vi.mock('./SentenceAnalysis', () => ({
+  default: () => <section aria-label="Sentence analysis test panel" />,
+}))
+
 const searchMock = vi.mocked(searchDictionary)
 
 function makeEntry(sourceId: number, writtenForm: string): DictionaryEntry {
@@ -45,6 +49,11 @@ function typeQuery(value: string) {
   fireEvent.change(screen.getByRole('searchbox'), {
     target: { value },
   })
+}
+
+function openLanguageOptions() {
+  fireEvent.click(screen.getByRole('button', { name: 'Options' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Languages' }))
 }
 
 async function advanceTime(milliseconds = 200) {
@@ -220,7 +229,7 @@ test('keeps at least one language selected and sends selected languages', async 
   searchMock.mockResolvedValue(makePage([makeEntry(1, '学校')]))
 
   render(<App />)
-
+  openLanguageOptions()
   const english = screen.getByRole('checkbox', { name: 'English' })
   const french = screen.getByRole('checkbox', { name: 'Français' })
 
@@ -281,7 +290,7 @@ test('changing languages cancels a pending page and resets results', async () =>
   await advanceTime()
 
   const oldSignal = searchMock.mock.calls[1][1].signal
-
+  openLanguageOptions()
   fireEvent.click(screen.getByRole('checkbox', { name: 'Français' }))
   await advanceTime()
 
@@ -322,7 +331,7 @@ test('opens a shared search using URL languages instead of preferences', async (
 
   render(<App />)
   await advanceTime()
-
+  openLanguageOptions()
   expect(screen.getByRole('searchbox')).toHaveValue('school')
   expect(
     screen.getByRole('checkbox', { name: 'English' }),
@@ -374,7 +383,7 @@ test('restores navigation and cancels a pending URL update', async () => {
   })
 
   await advanceTime()
-
+  openLanguageOptions()
   expect(screen.getByRole('searchbox')).toHaveValue('tabe')
   expect(
     screen.getByRole('checkbox', { name: 'Français' }),
@@ -394,4 +403,46 @@ test('restores navigation and cancels a pending URL update', async () => {
       offset: 0,
     }),
   )
+})
+
+test('explains an inflection without opening sentence analysis', async () => {
+  searchMock.mockResolvedValue({
+    ...makePage([makeEntry(1, '食べる'), makeEntry(2, '別の一致')]),
+    query: '食べました',
+    inflection: {
+      source_ids: [1],
+      description: 'polite past',
+    },
+  })
+
+  render(<App />)
+  typeQuery('食べました')
+
+  expect(
+    screen.queryByRole('region', { name: 'Sentence analysis test panel' }),
+  ).not.toBeInTheDocument()
+
+  await advanceTime()
+
+  const notes = screen.getAllByText(/polite past/)
+  expect(notes).toHaveLength(1)
+  expect(notes[0].closest('article')).toHaveTextContent('食べる')
+
+  expect(
+    screen.queryByRole('region', { name: 'Sentence analysis test panel' }),
+  ).not.toBeInTheDocument()
+
+  searchMock.mockResolvedValue({
+    ...makePage([]),
+    query: '昨日食べました',
+    inflection: null,
+  })
+
+  typeQuery('昨日食べました')
+  await advanceTime()
+
+  expect(
+    screen.getByRole('region', { name: 'Sentence analysis test panel' }),
+  ).toBeVisible()
+  expect(screen.queryByText(/polite past/)).not.toBeInTheDocument()
 })

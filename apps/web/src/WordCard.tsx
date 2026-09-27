@@ -6,22 +6,41 @@ type WordCardProps = {
   entry: DictionaryEntry
   selected?: boolean
   onSelect?: (sourceId: number, trigger: HTMLButtonElement) => void
+  inflection?: {
+    query: string
+    description: string
+  }
+  compact?: boolean
 }
 
 export default function WordCard({
   entry,
   selected = false,
   onSelect,
+  inflection,
+  compact = false,
 }: WordCardProps) {
   const { title, alternateWrittenForms } = getEntryHeading(entry)
+
+  const availableSenses = entry.senses
+    .map((sense, sourcePosition) => ({
+      ...sense,
+      sourcePosition,
+    }))
+    .filter((sense) => sense.glosses.length > 0)
+
+  const displayedSenses = compact
+    ? availableSenses.slice(0, 4)
+    : availableSenses
+
+  const hiddenSenseCount = availableSenses.length - displayedSenses.length
 
   const languageGroups = DICTIONARY_LANGUAGES
     .map((language) => ({
       language,
-      senses: entry.senses
-        .map((sense, sourcePosition) => ({
+      senses: displayedSenses
+        .map((sense) => ({
           ...sense,
-          sourcePosition,
           glosses: sense.glosses.filter(
             (gloss) => gloss.language === language.code,
           ),
@@ -29,11 +48,11 @@ export default function WordCard({
         .filter((sense) => sense.glosses.length > 0),
     }))
     .filter((group) => group.senses.length > 0)
-
   return (
 <article
   className={[
     'word-card',
+    compact ? 'word-card-compact' : '',
     selected ? 'word-card-selected' : '',
     onSelect ? 'word-card-clickable' : '',
   ].filter(Boolean).join(' ')}
@@ -95,13 +114,19 @@ export default function WordCard({
     title
   )}
 </h3>
+        {alternateWrittenForms.length > 0 && (
+          <span className="alternate-written-forms">
+            Also written:{' '}
+            <span lang="ja">{alternateWrittenForms.join(' / ')}</span>
+          </span>
+        )}
         {entry.is_common && <span className="common-badge">Common</span>}
       </div>
-      {alternateWrittenForms.length > 0 && (
-        <p className="alternate-written-forms">
-          Also written: <span lang="ja">
-            {alternateWrittenForms.join(' / ')}
-          </span>
+      {inflection && (
+        <p className="inflection-note">
+          <span lang="ja">{inflection.query}</span>
+          {' — '}
+          {inflection.description}
         </p>
       )}
       <ul className="reading-list">
@@ -133,15 +158,18 @@ export default function WordCard({
             <ol className="sense-list">
               {senses.map((sense) => (
                 <li key={sense.sourcePosition}>
-                  {isUsuallyKana(sense) && (
-                    <span className="usage-badge">
-                      Usually kana
-                    </span>
-                  )}
-                  {sense.parts_of_speech.length > 0 && (
-                    <p className="entry-note">
-                      {sense.parts_of_speech.join('; ')}
-                    </p>
+                  {(isUsuallyKana(sense) ||
+                    sense.parts_of_speech.length > 0) && (
+                    <div className="sense-meta">
+                      {isUsuallyKana(sense) && (
+                        <span className="usage-badge">Usually kana</span>
+                      )}
+                      {sense.parts_of_speech.length > 0 && (
+                        <span className="entry-note">
+                          {sense.parts_of_speech.join(' · ')}
+                        </span>
+                      )}
+                    </div>
                   )}
 
                   <p lang={language.htmlLang}>
@@ -170,6 +198,12 @@ export default function WordCard({
             </ol>
           </section>
         ))
+      )}
+      {hiddenSenseCount > 0 && (
+        <p className="entry-note">
+          {hiddenSenseCount} more {hiddenSenseCount === 1 ? 'sense' : 'senses'}
+          {' — open word details to see all.'}
+        </p>
       )}
     </article>
   )

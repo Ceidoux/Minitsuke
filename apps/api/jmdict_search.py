@@ -2,6 +2,9 @@ import unicodedata
 
 from sqlalchemy.orm import Session
 
+from conjugation_lookup import find_generated_inflections
+from deconjugation import describe_inflection, extract_inflection_candidate
+from deconjugation_service import find_inflection_matches
 from japanese_text import normalize_reading
 from jmdict_entry_service import load_entries
 from jmdict_search_repository import (
@@ -9,7 +12,9 @@ from jmdict_search_repository import (
     find_reading_matches,
     find_written_form_matches,
 )
-from schemas import JmdictSearchResponse
+from romaji import interpret_romaji
+from schemas import InflectionResponse, JmdictSearchResponse
+from sentence_analysis import MAX_SENTENCE_LENGTH, get_sentence_analyzer
 
 
 def _is_kana(character: str) -> bool:
@@ -44,21 +49,81 @@ def search_jmdict(
     if not cleaned:
         raise ValueError("Search query must not be empty")
 
-    normalized = normalize_reading(cleaned)
+    if not 1 <= limit <= 100:
+        raise ValueError("Limit must be between 1 and 100")
 
+    if offset < 0:
+        raise ValueError("Offset must not be negative")
+
+    normalized = normalize_reading(cleaned)
+    contains_japanese = any(
+        _is_japanese_character(character) for character in normalized
+    )
+
+    inflection_entry_ids: tuple[int, ...] = ()
+    inflection = None
+
+    analysis_text = (
+        cleaned if contains_japanese else interpret_romaji(cleaned).complete_reading
+    )
+
+    if analysis_text is not None and len(analysis_text) <= MAX_SENTENCE_LENGTH:
+        matches, descriptions = find_generated_inflections(
+            session,
+            analysis_text,
+        )
+
+        if matches:
+            inflection_entry_ids = tuple(match.entry_id for match in matches)
+            explanations = list(
+                dict.fromkeys(
+                    explanation
+                    for entry_descriptions in descriptions.values()
+                    for explanation in entry_descriptions
+                )
+            )
+            inflection = InflectionResponse(
+                source_ids=[match.source_id for match in matches],
+                description=" / ".join(explanations),
+                descriptions=descriptions,
+            )
+        else:
+            # Retain existing support for adjectives and constructions
+            # not yet covered by the verb generator.
+            analyzer = get_sentence_analyzer()
+            candidate = extract_inflection_candidate(
+                analysis_text,
+                analyzer.analyze(analysis_text),
+            )
+
+            if candidate is not None:
+                matches = find_inflection_matches(session, candidate)
+                inflection_entry_ids = tuple(match.entry_id for match in matches)
+
+                if matches:
+                    explanation = describe_inflection(candidate)
+                    inflection = InflectionResponse(
+                        source_ids=[match.source_id for match in matches],
+                        description=explanation,
+                        descriptions={
+                            match.source_id: [explanation] for match in matches
+                        },
+                    )
     if all(_is_kana(character) for character in normalized):
         page = find_reading_matches(
             session,
             cleaned,
             limit=limit,
             offset=offset,
+            inflection_entry_ids=inflection_entry_ids,
         )
-    elif any(_is_japanese_character(character) for character in normalized):
+    elif contains_japanese:
         page = find_written_form_matches(
             session,
             cleaned,
             limit=limit,
             offset=offset,
+            inflection_entry_ids=inflection_entry_ids,
         )
     else:
         page = find_latin_matches(
@@ -67,6 +132,7 @@ def search_jmdict(
             languages=languages,
             limit=limit,
             offset=offset,
+            inflection_entry_ids=inflection_entry_ids,
         )
 
     entry_ids = tuple(match.entry_id for match in page.matches)
@@ -86,4 +152,5 @@ def search_jmdict(
         limit=limit,
         offset=offset,
         has_more=page.has_more,
+        inflection=inflection,
     )

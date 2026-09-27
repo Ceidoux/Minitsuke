@@ -124,6 +124,7 @@ export default function SentenceCandidates({
       <div className="word-list" aria-busy={loading}>
         {entries.map((entry) => (
           <WordCard
+            compact
             key={entry.source_id}
             entry={entry}
             selected={entry.source_id === selectedSourceId}

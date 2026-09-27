@@ -3,7 +3,7 @@ import { searchDictionary } from './dictionary-api'
 import type { SearchResponse } from './dictionary-api'
 import type { DictionaryLanguageCode } from './dictionary-languages'
 import WordCard from './WordCard'
-
+import SentenceAnalysis from './SentenceAnalysis'
 type SearchResultsProps = {
   query: string
   languages: DictionaryLanguageCode[]
@@ -85,53 +85,81 @@ export default function SearchResults({
     setError(null)
     setAttempt((previous) => previous + 1)
   }
+  const containsJapanese =
+    /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(query)
 
+  const showSentenceAnalysis =
+    containsJapanese &&
+    (page !== null || error !== null) &&
+    !page?.inflection
   return (
-    <section aria-labelledby="results-heading">
-      <h2 id="results-heading">Results</h2>
+    <>
+      {showSentenceAnalysis && (
+        <SentenceAnalysis
+          key={query}
+          query={query}
+          languages={languages}
+          selectedSourceId={selectedSourceId}
+          onSelect={onSelect}
+        />
+      )}
 
-      <p role="status">
-        {loading
-          ? page
-            ? 'Loading more results…'
-            : 'Searching…'
-          : error
-            ? 'Search could not be completed.'
-            : page?.results.length === 0
-              ? `No results for “${query}”.`
-              : `${page?.results.length ?? 0} results shown.`}
-      </p>
+      <section aria-label="Results">
+        {loading && (
+          <p className="search-status" role="status">
+            {page ? 'Loading more results…' : 'Searching…'}
+          </p>
+        )}
 
-      {error && (
-        <div className="search-error">
-          <p role="alert">{error}</p>
-          <button type="button" onClick={retry} disabled={loading}>
-            Try again
-          </button>
+        {!loading && !error && page?.results.length === 0 && (
+          <p className="search-status" role="status">
+            No results for “{query}”.
+          </p>
+        )}
+
+        {error && (
+          <div className="search-error">
+            <p role="alert">{error}</p>
+            <button type="button" onClick={retry} disabled={loading}>
+              Try again
+            </button>
+          </div>
+        )}
+
+        <div className="word-list" aria-busy={loading}>
+          {page?.results.map((entry) => (
+            <WordCard
+              compact
+              key={entry.source_id}
+              entry={entry}
+              selected={entry.source_id === selectedSourceId}
+              onSelect={onSelect}
+              inflection={
+                page.inflection?.source_ids.includes(entry.source_id)
+                  ? {
+                      query: page.query,
+                      description:
+                        page.inflection.descriptions?.[
+                          String(entry.source_id)
+                        ]?.join(' / ') ?? page.inflection.description,
+                    }
+                  : undefined
+              }
+            />
+          ))}
         </div>
-      )}
 
-      <div className="word-list" aria-busy={loading}>
-        {page?.results.map((entry) => (
-          <WordCard
-  key={entry.source_id}
-  entry={entry}
-  selected={entry.source_id === selectedSourceId}
-  onSelect={onSelect}
-/>
-        ))}
-      </div>
-
-      {page?.has_more && !error && (
-        <button
-          className="load-more"
-          type="button"
-          onClick={loadMore}
-          disabled={loading}
-        >
-          {loading ? 'Loading…' : 'Load more'}
-        </button>
-      )}
-    </section>
+        {page?.has_more && !error && (
+          <button
+            className="load-more"
+            type="button"
+            onClick={loadMore}
+            disabled={loading}
+          >
+            {loading ? 'Loading…' : 'Load more'}
+          </button>
+        )}
+      </section>
+    </>
   )
 }
