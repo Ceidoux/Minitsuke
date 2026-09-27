@@ -6,22 +6,41 @@ type WordCardProps = {
   entry: DictionaryEntry
   selected?: boolean
   onSelect?: (sourceId: number, trigger: HTMLButtonElement) => void
+  inflection?: {
+    query: string
+    description: string
+  }
+  compact?: boolean
 }
 
 export default function WordCard({
   entry,
   selected = false,
   onSelect,
+  inflection,
+  compact = false,
 }: WordCardProps) {
   const { title, alternateWrittenForms } = getEntryHeading(entry)
+
+  const availableSenses = entry.senses
+    .map((sense, sourcePosition) => ({
+      ...sense,
+      sourcePosition,
+    }))
+    .filter((sense) => sense.glosses.length > 0)
+
+  const displayedSenses = compact
+    ? availableSenses.slice(0, 4)
+    : availableSenses
+
+  const hiddenSenseCount = availableSenses.length - displayedSenses.length
 
   const languageGroups = DICTIONARY_LANGUAGES
     .map((language) => ({
       language,
-      senses: entry.senses
-        .map((sense, sourcePosition) => ({
+      senses: displayedSenses
+        .map((sense) => ({
           ...sense,
-          sourcePosition,
           glosses: sense.glosses.filter(
             (gloss) => gloss.language === language.code,
           ),
@@ -29,7 +48,6 @@ export default function WordCard({
         .filter((sense) => sense.glosses.length > 0),
     }))
     .filter((group) => group.senses.length > 0)
-
   return (
 <article
   className={[
@@ -104,6 +122,13 @@ export default function WordCard({
           </span>
         </p>
       )}
+      {inflection && (
+        <p className="inflection-note">
+          <span lang="ja">{inflection.query}</span>
+          {' — '}
+          {inflection.description}
+        </p>
+      )}
       <ul className="reading-list">
         {entry.readings.map((reading) => (
           <li key={reading.text}>
@@ -170,6 +195,12 @@ export default function WordCard({
             </ol>
           </section>
         ))
+      )}
+      {hiddenSenseCount > 0 && (
+        <p className="entry-note">
+          {hiddenSenseCount} more {hiddenSenseCount === 1 ? 'sense' : 'senses'}
+          {' — open word details to see all.'}
+        </p>
       )}
     </article>
   )

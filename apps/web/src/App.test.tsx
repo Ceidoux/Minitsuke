@@ -8,6 +8,10 @@ vi.mock('./dictionary-api', () => ({
   searchDictionary: vi.fn(),
 }))
 
+vi.mock('./SentenceAnalysis', () => ({
+  default: () => <section aria-label="Sentence analysis test panel" />,
+}))
+
 const searchMock = vi.mocked(searchDictionary)
 
 function makeEntry(sourceId: number, writtenForm: string): DictionaryEntry {
@@ -394,4 +398,46 @@ test('restores navigation and cancels a pending URL update', async () => {
       offset: 0,
     }),
   )
+})
+
+test('explains an inflection without opening sentence analysis', async () => {
+  searchMock.mockResolvedValue({
+    ...makePage([makeEntry(1, '食べる'), makeEntry(2, '別の一致')]),
+    query: '食べました',
+    inflection: {
+      source_ids: [1],
+      description: 'polite past',
+    },
+  })
+
+  render(<App />)
+  typeQuery('食べました')
+
+  expect(
+    screen.queryByRole('region', { name: 'Sentence analysis test panel' }),
+  ).not.toBeInTheDocument()
+
+  await advanceTime()
+
+  const notes = screen.getAllByText(/polite past/)
+  expect(notes).toHaveLength(1)
+  expect(notes[0].closest('article')).toHaveTextContent('食べる')
+
+  expect(
+    screen.queryByRole('region', { name: 'Sentence analysis test panel' }),
+  ).not.toBeInTheDocument()
+
+  searchMock.mockResolvedValue({
+    ...makePage([]),
+    query: '昨日食べました',
+    inflection: null,
+  })
+
+  typeQuery('昨日食べました')
+  await advanceTime()
+
+  expect(
+    screen.getByRole('region', { name: 'Sentence analysis test panel' }),
+  ).toBeVisible()
+  expect(screen.queryByText(/polite past/)).not.toBeInTheDocument()
 })

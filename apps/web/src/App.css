@@ -347,3 +347,70 @@ button:focus-visible {
 .sentence-candidates h3 {
   margin-top: 0;
 }
+
+.inflection-note {
+  padding: 0.65rem 0.8rem;
+  border-inline-start: 3px solid currentColor;
+  border-radius: 0.25rem;
+  background: rgba(127, 127, 127, 0.1);
+  line-height: 1.5;
+}
+
+.conjugation-section {
+  margin-top: 1.5rem;
+}
+
+.conjugation-selector {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+
+.conjugation-selector select {
+  max-width: 100%;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.conjugation-group {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 0.5rem;
+}
+
+.conjugation-group summary {
+  padding: 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.conjugation-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.conjugation-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.conjugation-table th,
+.conjugation-table td {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid rgba(127, 127, 127, 0.25);
+  vertical-align: top;
+}
+
+.conjugation-table tbody th {
+  font-weight: 400;
+}
+
+.conjugation-table td {
+  white-space: nowrap;
+}
+
+.conjugation-caption {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}

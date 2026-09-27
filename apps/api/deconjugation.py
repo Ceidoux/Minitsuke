@@ -122,3 +122,26 @@ def extract_inflection_candidate(
         grammatical_class=grammatical_class,
         ending_forms=ending_forms,
     )
+
+
+def describe_inflection(candidate: InflectionCandidate) -> str:
+    descriptions = {
+        ("ます",): "polite non-past",
+        ("ます", "た"): "polite past",
+        ("ない",): "negative",
+        ("ない", "た"): "negative past",
+        ("た",): "past",
+        ("れる",): "passive or honorific",
+        ("られる",): "potential, passive, or honorific",
+        ("て", "いる"): "ている construction (ongoing action or resulting state)",
+        ("で", "いる"): "ている construction (ongoing action or resulting state)",
+        ("れる", "て", "いる"): "passive or honorific + ている",
+        ("られる", "て", "いる"): "potential, passive, or honorific + ている",
+        ("させる", "られる", "ます", "た"): "causative-passive, polite past",
+        ("せる", "られる", "ます", "た"): "causative-passive, polite past",
+    }
+
+    return descriptions.get(
+        candidate.ending_forms,
+        "recognized inflected form",
+    )

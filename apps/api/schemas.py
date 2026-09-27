@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from conjugation import ConjugatedForm
+
 
 class WordEntry(BaseModel):
     written_form: str
@@ -39,9 +41,28 @@ class JmdictEntryResponse(BaseModel):
     senses: list[JmdictSenseResponse]
 
 
+class InflectionResponse(BaseModel):
+    source_ids: list[int]
+    description: str
+
+
 class JmdictSearchResponse(BaseModel):
     query: str
     results: list[JmdictEntryResponse]
     limit: int
     offset: int
     has_more: bool
+    inflection: InflectionResponse | None = None
+
+
+class ConjugationTableResponse(BaseModel):
+    written: str
+    reading: str
+    verb_class: str
+    sense_positions: list[int]
+    forms: list[ConjugatedForm]
+
+
+class JmdictEntryDetailResponse(JmdictEntryResponse):
+    conjugations: list[ConjugationTableResponse] = Field(default_factory=list)
+    conjugations_incomplete: bool = False

@@ -527,6 +527,7 @@ def find_latin_matches(
     languages: tuple[str, ...] = ("eng",),
     limit: int = 30,
     offset: int = 0,
+    inflection_entry_ids: tuple[int, ...] = (),
 ) -> MatchPage:
     cleaned = normalize_written_form(query.strip())
     if not cleaned:
@@ -631,4 +632,5 @@ def find_latin_matches(
         best_matches,
         limit=limit,
         offset=offset,
+        inflection_entry_ids=inflection_entry_ids,
     )

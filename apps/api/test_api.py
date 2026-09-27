@@ -77,6 +77,7 @@ def test_search_returns_complete_entry(
         "limit": 30,
         "offset": 0,
         "has_more": False,
+        "inflection": None,
     }
 
 
@@ -96,6 +97,7 @@ def test_unmatched_query_returns_empty_results(
         "limit": 30,
         "offset": 0,
         "has_more": False,
+        "inflection": None,
     }
 
 
@@ -252,6 +254,8 @@ def test_entry_detail_defaults_to_english(
     assert response.status_code == 200
     assert response.json() == {
         "source_id": 100,
+        "conjugations": [],
+        "conjugations_incomplete": False,
         "is_common": True,
         "written_forms": ["学校"],
         "readings": [

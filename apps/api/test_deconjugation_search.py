@@ -138,3 +138,93 @@ def test_excludes_grammatically_incompatible_entry(db_session: Session):
     response = search_jmdict(db_session, "確認しました")
 
     assert response.results == []
+
+
+def test_returns_inflection_explanation_beyond_first_page(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    for offset in (0, 30):
+        response = search_jmdict(
+            db_session,
+            "食べました",
+            offset=offset,
+        )
+
+        assert response.inflection is not None
+        assert response.inflection.source_ids == [100]
+        assert response.inflection.description == "polite past"
+
+
+def test_unvalidated_construction_has_no_inflection_metadata(
+    db_session: Session,
+):
+    response = search_jmdict(db_session, "食べました")
+
+    assert response.inflection is None
+
+
+@pytest.mark.parametrize(
+    ("query", "description"),
+    [
+        ("tabemasu", "polite non-past"),
+        ("TABEMASU", "polite non-past"),
+        ("tabemashita", "polite past"),
+    ],
+)
+def test_romaji_inflection_search(
+    db_session: Session,
+    query: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert response.query == query
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.source_ids == [100]
+    assert response.inflection.description == description
+
+
+def test_romaji_preserves_direct_matches_and_pagination(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("たべます",),
+        reading="たべます",
+        label="expression",
+    )
+    add_entry(
+        db_session,
+        200,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    first = search_jmdict(db_session, "tabemasu", limit=1)
+    second = search_jmdict(db_session, "tabemasu", limit=1, offset=1)
+
+    assert [entry.source_id for entry in first.results] == [100]
+    assert first.has_more is True
+    assert [entry.source_id for entry in second.results] == [200]
+    assert second.has_more is False
+    assert first.inflection is not None
+    assert first.inflection.source_ids == [200]

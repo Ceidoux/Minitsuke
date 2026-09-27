@@ -42,6 +42,7 @@ def test_response_preserves_senses_languages_and_restrictions():
         "limit": 30,
         "offset": 0,
         "has_more": True,
+        "inflection": None,
     }
 
     response = JmdictSearchResponse.model_validate(payload)
@@ -111,4 +112,5 @@ def test_response_supports_empty_results():
         "limit": 30,
         "offset": 0,
         "has_more": False,
+        "inflection": None,
     }
