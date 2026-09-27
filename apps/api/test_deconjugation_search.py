@@ -355,3 +355,109 @@ def test_search_finds_colloquial_potential(
     assert [entry.source_id for entry in response.results] == [100]
     assert response.inflection is not None
     assert response.inflection.descriptions[100] == ["potential — colloquial"]
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "description"),
+    [
+        ("だった", None, "だ", "past"),
+        ("datta", None, "だ", "past"),
+        (
+            "ではありませんでした",
+            None,
+            "です",
+            "polite negative past",
+        ),
+        (
+            "dehaarimasendeshita",
+            None,
+            "です",
+            "polite negative past",
+        ),
+        (
+            "dewaarimasendeshita",
+            None,
+            "です",
+            "polite negative past",
+        ),
+        ("であった", None, "である", "past"),
+        ("deatta", None, "である", "past"),
+        (
+            "では御座いません",
+            "で御座います",
+            "でございます",
+            "negative",
+        ),
+        (
+            "dehagozaimasen",
+            "で御座います",
+            "でございます",
+            "negative",
+        ),
+        (
+            "dewagozaimasen",
+            "で御座います",
+            "でございます",
+            "negative",
+        ),
+    ],
+)
+def test_search_finds_copula_forms(
+    db_session: Session,
+    query: str,
+    written: str | None,
+    reading: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,) if written is not None else (),
+        reading=reading,
+        label="copula",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == [description]
+
+
+def test_copula_lookup_excludes_homophone_nouns(db_session: Session):
+    from conjugation_lookup import find_generated_inflections
+
+    add_entry(
+        db_session,
+        100,
+        forms=("打",),
+        reading="だ",
+        label="noun (common) (futsuumeishi)",
+    )
+
+    matches, descriptions = find_generated_inflections(db_session, "だった")
+
+    assert matches == ()
+    assert descriptions == {}
+
+
+def test_copula_pronunciation_alias_requires_explicit_opt_in(
+    db_session: Session,
+):
+    from conjugation_lookup import find_generated_inflections
+
+    add_entry(
+        db_session,
+        100,
+        forms=(),
+        reading="です",
+        label="copula",
+    )
+
+    matches, descriptions = find_generated_inflections(
+        db_session,
+        "でわありませんでした",
+    )
+
+    assert matches == ()
+    assert descriptions == {}

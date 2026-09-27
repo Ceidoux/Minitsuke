@@ -1,4 +1,5 @@
 from conjugation import conjugate_verb
+from copula_conjugation import conjugate_copula
 from japanese_text import normalize_reading
 from schemas import (
     ConjugationTableResponse,
@@ -67,6 +68,34 @@ def build_conjugation_tables(
 
     for position, sense in enumerate(entry.senses, start=1):
         pairs = _sense_pairs(entry, sense)
+
+        if "copula" in sense.parts_of_speech:
+            for written, reading in pairs:
+                key = (written, reading, "cop")
+                previous = tables.get(key)
+
+                if previous is not None:
+                    if position not in previous.sense_positions:
+                        previous.sense_positions.append(position)
+                    continue
+
+                try:
+                    forms = conjugate_copula(written, reading)
+                except ValueError:
+                    incomplete = True
+                    continue
+
+                tables[key] = ConjugationTableResponse(
+                    written=written,
+                    reading=reading,
+                    verb_class="cop",
+                    sense_positions=[position],
+                    forms=list(forms),
+                )
+
+            # Copulas can also carry a verb tag, as with である.
+            # Their dedicated paradigm takes priority for this sense.
+            continue
 
         for label in sense.parts_of_speech:
             if label not in VERB_CLASSES and label not in {
