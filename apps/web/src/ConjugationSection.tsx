@@ -32,12 +32,14 @@ const FORM_LABELS: Record<string, string> = {
   negative_te: 'Negative て-form',
   without_doing: 'Without doing — ないで',
   conditional_ba: 'Conditional — ば',
+  conditional_ba_alternative: 'Alternative conditional — ば',
   negative_conditional_ba: 'Negative conditional — ば',
   conditional_tara: 'Conditional — たら',
   negative_conditional_tara: 'Negative conditional — たら',
   volitional: 'Volitional',
   polite_volitional: 'Polite volitional',
   imperative: 'Imperative',
+  imperative_formal: 'Formal imperative',
   imperative_alternative: 'Alternative imperative',
   prohibitive: 'Prohibitive — do not',
   negative_colloquial: 'Negative — colloquial',
@@ -76,7 +78,9 @@ export default function ConjugationSection({
 
       {incomplete && (
         <p className="entry-note">
-          Some grammatical classes or spellings in this entry are not supported yet.        </p>
+          Conjugation coverage is partial. Some forms, grammatical classes,
+          or spellings in this entry are not supported yet.
+        </p>
       )}
 
       {table && (

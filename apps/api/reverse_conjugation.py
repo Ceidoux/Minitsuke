@@ -31,6 +31,13 @@ def _reverse_rules() -> tuple[ReverseRule, ...]:
 
     patterns = [
         ("v1", "る"),
+        ("v1-s", "くれる"),
+        ("v1-s", "呉れる"),
+        ("vz", "ずる"),
+        ("v5aru", "る"),
+        ("v5r-i", "ある"),
+        ("v5r-i", "有る"),
+        ("v5r-i", "在る"),
         *((verb_class, endings[0]) for verb_class, endings in GODAN_ENDINGS.items()),
         ("vs-i", "する"),
         ("vk", "くる"),
@@ -82,52 +89,66 @@ def _reverse_rules() -> tuple[ReverseRule, ...]:
 
 
 @lru_cache(maxsize=1)
-def _adjective_reverse_rules() -> tuple[ReverseRule, ...]:
+def _reverse_rules() -> tuple[ReverseRule, ...]:
     marker = "仮"
 
-    # Written and reading endings can differ, as in 良い / よい.
-    patterns = (
-        ("adj-i", "い", "い"),
-        ("adj-ix", "いい", "いい"),
-        ("adj-ix", "よい", "よい"),
-        ("adj-ix", "い", "よい"),
-        ("adj-na", "", ""),
-    )
+    verb_patterns = [
+        ("v1", "る"),
+        ("v1-s", "くれる"),
+        ("v1-s", "呉れる"),
+        ("vz", "ずる"),
+        ("v5aru", "る"),
+        ("v5r-i", "ある"),
+        ("v5r-i", "有る"),
+        ("v5r-i", "在る"),
+        *((verb_class, endings[0]) for verb_class, endings in GODAN_ENDINGS.items()),
+        ("vs-i", "する"),
+        ("vs-s", "する"),
+        ("vs-s-aisu", "愛する"),
+        ("vs-s-aisu", "あいする"),
+        ("vk", "くる"),
+        ("vk", "来る"),
+    ]
 
-    rules: dict[ReverseRule, None] = {}
+    rules = []
 
-    for adjective_class, written_ending, reading_ending in patterns:
-        template = marker + written_ending
-        generated = conjugate_adjective(
-            template,
-            marker + reading_ending,
-            adjective_class,
-        )
+    for verb_class, dictionary_ending in verb_patterns:
+        template = marker + dictionary_ending
+        generated = conjugate_verb(template, template, verb_class)
 
         for item in generated:
-            # Plain i-adjectives and their attributive forms are unchanged.
-            # Na-adjective nonpast forms add だ and must remain searchable.
-            if item.written == template:
+            if item.group == "basic" and item.form == "nonpast":
                 continue
 
             if not item.written.startswith(marker):
-                raise ValueError("Adjective rule changed the template stem")
+                raise ValueError("Conjugation rule changed the template stem")
 
-            surface_ending = normalize_written_form(item.written[len(marker) :])
+            surface_ending = item.written[len(marker) :]
 
             if not surface_ending:
-                raise ValueError("Adjective rule produced an empty ending")
+                raise ValueError("Conjugation rule produced an empty ending")
 
-            rule = ReverseRule(
-                surface_ending=surface_ending,
-                dictionary_ending=written_ending,
-                verb_class=adjective_class,
-                group=item.group,
-                form=item.form,
+            rules.append(
+                ReverseRule(
+                    surface_ending=surface_ending,
+                    dictionary_ending=dictionary_ending,
+                    verb_class=verb_class,
+                    group=item.group,
+                    form=item.form,
+                )
             )
-            rules[rule] = None
 
-    return tuple(rules)
+    return tuple(
+        sorted(
+            rules,
+            key=lambda rule: (
+                -len(rule.surface_ending),
+                rule.verb_class,
+                rule.group,
+                rule.form,
+            ),
+        )
+    )
 
 
 @lru_cache(maxsize=1)
@@ -185,8 +206,15 @@ def reverse_conjugate(text: str) -> tuple[ReverseCandidate, ...]:
 
         stem = cleaned[: -len(rule.surface_ending)]
 
-        # Standalone する, 来る, and いい/よい can match without a prefix.
-        if not stem and rule.verb_class not in {"vs-i", "vk", "adj-ix"}:
+        # These classes have rules covering the complete standalone word.
+        if not stem and rule.verb_class not in {
+            "vs-i",
+            "vk",
+            "adj-ix",
+            "v1-s",
+            "v5r-i",
+            "vs-s-aisu",
+        }:
             continue
 
         candidate = ReverseCandidate(
@@ -244,6 +272,9 @@ def reverse_conjugate_prefix(text: str) -> tuple[ReverseCandidate, ...]:
                 "vs-i",
                 "vk",
                 "adj-ix",
+                "v1-s",
+                "v5r-i",
+                "vs-s-aisu",
             }:
                 continue
 
@@ -256,3 +287,49 @@ def reverse_conjugate_prefix(text: str) -> tuple[ReverseCandidate, ...]:
             candidates[candidate] = None
 
     return tuple(candidates)
+
+
+@lru_cache(maxsize=1)
+def _adjective_reverse_rules() -> tuple[ReverseRule, ...]:
+    marker = "仮"
+
+    adjective_patterns = (
+        ("adj-i", "い", "い"),
+        ("adj-ix", "いい", "いい"),
+        ("adj-ix", "よい", "よい"),
+        ("adj-ix", "い", "よい"),
+        ("adj-na", "", ""),
+    )
+
+    rules: dict[ReverseRule, None] = {}
+
+    for adjective_class, written_ending, reading_ending in adjective_patterns:
+        template = marker + written_ending
+        generated = conjugate_adjective(
+            template,
+            marker + reading_ending,
+            adjective_class,
+        )
+
+        for item in generated:
+            if item.written == template:
+                continue
+
+            if not item.written.startswith(marker):
+                raise ValueError("Adjective rule changed the template stem")
+
+            surface_ending = normalize_written_form(item.written[len(marker) :])
+
+            if not surface_ending:
+                raise ValueError("Adjective rule produced an empty ending")
+
+            rule = ReverseRule(
+                surface_ending=surface_ending,
+                dictionary_ending=written_ending,
+                verb_class=adjective_class,
+                group=item.group,
+                form=item.form,
+            )
+            rules[rule] = None
+
+    return tuple(rules)

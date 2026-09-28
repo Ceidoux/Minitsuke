@@ -714,3 +714,297 @@ def test_complete_match_keeps_its_existing_explanation(
     assert response.inflection is not None
     assert response.inflection.descriptions[100] == ["negative"]
     assert 100 not in response.inflection.completions
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "label", "description"),
+    [
+        (
+            "くれ",
+            "呉れる",
+            "くれる",
+            "Ichidan verb - kureru special class",
+            "imperative",
+        ),
+        (
+            "kure",
+            "呉れる",
+            "くれる",
+            "Ichidan verb - kureru special class",
+            "imperative",
+        ),
+        (
+            "呉れ",
+            "呉れる",
+            "くれる",
+            "Ichidan verb - kureru special class",
+            "imperative",
+        ),
+        (
+            "kudasaimasu",
+            "下さる",
+            "くださる",
+            "Godan verb - -aru special class",
+            "polite non-past",
+        ),
+        (
+            "なさい",
+            "なさる",
+            "なさる",
+            "Godan verb - -aru special class",
+            "imperative",
+        ),
+        (
+            "ありません",
+            "有る",
+            "ある",
+            "Godan verb with 'ru' ending (irregular verb)",
+            "polite negative",
+        ),
+        (
+            "arimasen",
+            "有る",
+            "ある",
+            "Godan verb with 'ru' ending (irregular verb)",
+            "polite negative",
+        ),
+        (
+            "ない",
+            "有る",
+            "ある",
+            "Godan verb with 'ru' ending (irregular verb)",
+            "negative",
+        ),
+    ],
+)
+def test_search_finds_irregular_verb_forms(
+    db_session: Session,
+    query: str,
+    written: str,
+    reading: str,
+    label: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,),
+        reading=reading,
+        label=label,
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == [description]
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "label", "expected"),
+    [
+        (
+            "kudasaim",
+            "下さる",
+            "くださる",
+            "Godan verb - -aru special class",
+            "くださいます",
+        ),
+        (
+            "ありませんで",
+            "有る",
+            "ある",
+            "Godan verb with 'ru' ending (irregular verb)",
+            "ありませんでした",
+        ),
+        (
+            "くれま",
+            "呉れる",
+            "くれる",
+            "Ichidan verb - kureru special class",
+            "くれます",
+        ),
+    ],
+)
+def test_search_finds_irregular_verb_completions(
+    db_session: Session,
+    query: str,
+    written: str,
+    reading: str,
+    label: str,
+    expected: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,),
+        reading=reading,
+        label=label,
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert expected in {item.reading for item in response.inflection.completions[100]}
+
+
+def test_kureru_imperative_does_not_match_regular_homophone(
+    db_session: Session,
+):
+    from conjugation_lookup import find_generated_inflections
+
+    add_entry(
+        db_session,
+        100,
+        forms=("暮れる",),
+        reading="くれる",
+        label="Ichidan verb",
+    )
+
+    matches, descriptions = find_generated_inflections(db_session, "くれ")
+
+    assert matches == ()
+    assert descriptions == {}
+
+
+@pytest.mark.parametrize(
+    ("query", "description"),
+    [
+        ("信じました", "polite past"),
+        ("shinjimashita", "polite past"),
+        ("信ずれば", "conditional ba"),
+        ("信じれば", "conditional ba alternative"),
+        ("信ぜよ", "imperative alternative"),
+    ],
+)
+def test_search_finds_zuru_forms(
+    db_session: Session,
+    query: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("信ずる",),
+        reading="しんずる",
+        label="Ichidan verb - zuru verb (alternative form of -jiru verbs)",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == [description]
+
+
+def test_search_finds_incomplete_zuru_form(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        forms=("信ずる",),
+        reading="しんずる",
+        label="Ichidan verb - zuru verb (alternative form of -jiru verbs)",
+    )
+
+    response = search_jmdict(db_session, "shinjima")
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert "しんじます" in {
+        item.reading for item in response.inflection.completions[100]
+    }
+
+
+def test_search_preserves_jiru_and_zuru_interpretations(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("信ずる",),
+        reading="しんずる",
+        label="Ichidan verb - zuru verb (alternative form of -jiru verbs)",
+    )
+    add_entry(
+        db_session,
+        200,
+        forms=("信じる",),
+        reading="しんじる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, "信じました")
+
+    assert {entry.source_id for entry in response.results} == {100, 200}
+    assert response.inflection is not None
+    assert set(response.inflection.source_ids) == {100, 200}
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "description"),
+    [
+        ("aishimasu", "愛する", "あいする", "polite non-past"),
+        ("aisanai", "愛する", "あいする", "negative"),
+        ("愛せる", "愛する", "あいする", "potential"),
+        ("aiseru", "愛する", "あいする", "potential"),
+        ("愛せよ", "愛する", "あいする", "imperative formal"),
+        ("tasshimashita", "達する", "たっする", "polite past"),
+        (
+            "不問に付した",
+            "不問に付する",
+            "ふもんにふする",
+            "past",
+        ),
+    ],
+)
+def test_search_finds_special_suru_forms(
+    db_session: Session,
+    query: str,
+    written: str,
+    reading: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,),
+        reading=reading,
+        label="suru verb - special class",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == [description]
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "expected"),
+    [
+        ("aishima", "愛する", "あいする", "愛します"),
+        ("aisana", "愛する", "あいする", "愛さない"),
+        ("tasshima", "達する", "たっする", "達します"),
+    ],
+)
+def test_search_finds_special_suru_completions(
+    db_session: Session,
+    query: str,
+    written: str,
+    reading: str,
+    expected: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,),
+        reading=reading,
+        label="suru verb - special class",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert expected in {item.written for item in response.inflection.completions[100]}

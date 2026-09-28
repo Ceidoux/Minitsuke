@@ -10,6 +10,9 @@ from schemas import (
 
 VERB_CLASSES = {
     "Ichidan verb": "v1",
+    "Ichidan verb - kureru special class": "v1-s",
+    "Godan verb - -aru special class": "v5aru",
+    "Godan verb with 'ru' ending (irregular verb)": "v5r-i",
     "Godan verb with 'u' ending": "v5u",
     "Godan verb with 'ku' ending": "v5k",
     "Godan verb with 'gu' ending": "v5g",
@@ -22,6 +25,7 @@ VERB_CLASSES = {
     "Godan verb - Iku/Yuku special class": "v5k-s",
     "Kuru verb - special class": "vk",
     "suru verb - included": "vs-i",
+    "Ichidan verb - zuru verb (alternative form of -jiru verbs)": "vz",
 }
 
 ADJECTIVE_CLASSES = {
@@ -135,13 +139,18 @@ def build_conjugation_tables(
                     written += "する"
                     reading += "する"
                 elif label == SURU_SPECIAL:
-                    # Standalone する follows the supported pattern.
-                    # Other special suru verbs need their own rules.
-                    if reading != "する":
+                    if reading == "する":
+                        verb_class = "vs-i"
+                        written = "する"
+                    elif written.endswith(("愛する", "あいする")) and reading.endswith(
+                        "あいする"
+                    ):
+                        verb_class = "vs-s-aisu"
+                    else:
+                        verb_class = "vs-s"
+                        # Shared forms are available, but this class
+                        # still needs additional word-specific rules.
                         incomplete = True
-                        continue
-                    verb_class = "vs-i"
-                    written = "する"
                 else:
                     verb_class = VERB_CLASSES[label]
                 if verb_class == "vs-i" and reading == "する":

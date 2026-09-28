@@ -88,9 +88,9 @@ def test_handles_standalone_suru_spelling():
 
 def test_reports_unsupported_class():
     entry = make_entry(
-        "有る",
-        "ある",
-        "Godan verb with 'ru' ending (irregular verb)",
+        "得る",
+        "うる",
+        "Nidan verb with 'u' ending (archaic)",
     )
 
     tables, incomplete = build_conjugation_tables(entry)
@@ -191,3 +191,120 @@ def test_unsupported_adjective_reading_marks_tables_incomplete():
     entry = make_entry("高い", "たっけー", "adjective (keiyoushi)")
 
     assert build_conjugation_tables(entry) == ([], True)
+
+
+def test_builds_kureru_special_table():
+    entry = make_entry(
+        "呉れる",
+        "くれる",
+        "Ichidan verb - kureru special class",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "v1-s"
+    assert any(
+        form.form == "imperative" and form.reading == "くれ" for form in tables[0].forms
+    )
+
+
+def test_builds_honorific_aru_table():
+    entry = make_entry(
+        "下さる",
+        "くださる",
+        "Godan verb - -aru special class",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "v5aru"
+    assert any(
+        form.written == "下さいます" and form.reading == "くださいます"
+        for form in tables[0].forms
+    )
+
+
+def test_builds_existential_aru_table():
+    entry = make_entry(
+        "有る",
+        "ある",
+        "Godan verb with 'ru' ending (irregular verb)",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "v5r-i"
+    assert any(
+        form.form == "negative" and form.written == "ない" for form in tables[0].forms
+    )
+
+
+def test_builds_zuru_table():
+    entry = make_entry(
+        "信ずる",
+        "しんずる",
+        "Ichidan verb - zuru verb (alternative form of -jiru verbs)",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "vz"
+    assert tables[0].written == "信ずる"
+    assert any(
+        form.written == "信じます" and form.reading == "しんじます"
+        for form in tables[0].forms
+    )
+
+
+def test_builds_aisuru_table():
+    entry = make_entry(
+        "愛する",
+        "あいする",
+        "suru verb - special class",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "vs-s-aisu"
+    assert any(form.written == "愛さない" for form in tables[0].forms)
+    assert any(form.written == "愛せる" for form in tables[0].forms)
+
+
+def test_aisuru_profile_applies_to_expression():
+    entry = make_entry(
+        "こよなく愛する",
+        "こよなくあいする",
+        "suru verb - special class",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert tables[0].verb_class == "vs-s-aisu"
+    assert any(form.written == "こよなく愛さない" for form in tables[0].forms)
+
+
+def test_shared_special_suru_table_reports_partial_coverage():
+    entry = make_entry(
+        "達する",
+        "たっする",
+        "suru verb - special class",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is True
+    assert len(tables) == 1
+    assert tables[0].verb_class == "vs-s"
+    assert any(form.written == "達します" for form in tables[0].forms)
+    assert not any(form.group == "potential" for form in tables[0].forms)

@@ -29,7 +29,10 @@ function unchangedPrefix(
   }
 
   // Preserve the compound prefix, but highlight the changed する part.
-  if (wordClass === 'vs-i' && dictionaryForm.endsWith('する')) {
+  if (
+    ['vs-i', 'vs-s', 'vs-s-aisu'].includes(wordClass) &&
+    dictionaryForm.endsWith('する')
+  ) {
     const prefix = dictionaryForm.slice(0, -2)
     return text.startsWith(prefix) ? prefix : ''
   }
