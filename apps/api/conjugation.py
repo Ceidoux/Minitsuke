@@ -56,12 +56,159 @@ def _ichidan_finite_forms(word: str) -> dict[str, str]:
     return _finite_forms(word, stem, stem + "ない", stem + "た")
 
 
+def _kureru_forms(word: str) -> dict[tuple[str, str], str]:
+    stem = _require_ending(word, "る")
+    forms = _generate_surface_forms(word, "v1")
+
+    forms[("basic", "imperative")] = stem
+    forms.pop(("basic", "imperative_alternative"), None)
+
+    return forms
+
+
+def _honorific_aru_forms(word: str) -> dict[tuple[str, str], str]:
+    stem = _require_ending(word, "る")
+    forms = _generate_surface_forms(word, "v5r")
+    polite_stem = stem + "い"
+
+    polite_endings = {
+        "polite": "ます",
+        "polite_negative": "ません",
+        "polite_past": "ました",
+        "polite_negative_past": "ませんでした",
+        "polite_volitional": "ましょう",
+    }
+
+    for form, ending in polite_endings.items():
+        forms[("basic", form)] = polite_stem + ending
+
+    forms[("basic", "imperative")] = polite_stem
+
+    return forms
+
+
+def _aru_forms(word: str) -> dict[tuple[str, str], str]:
+    ending = next(
+        (
+            candidate
+            for candidate in ("ある", "有る", "在る")
+            if word.endswith(candidate)
+        ),
+        None,
+    )
+
+    if ending is None:
+        raise ValueError("Aru verbs must end with ある, 有る, or 在る")
+
+    prefix = _require_ending(word, ending)
+
+    # Reuse the regular affirmative forms, but do not automatically
+    # generate the ordinary verb's voice and progressive groups.
+    forms = {
+        key: surface
+        for key, surface in _generate_surface_forms(word, "v5r").items()
+        if key[0] == "basic"
+    }
+
+    negative_forms = {
+        "negative": "ない",
+        "negative_past": "なかった",
+        "negative_te": "なくて",
+        "without_doing": "ないで",
+        "negative_conditional_ba": "なければ",
+        "negative_conditional_tara": "なかったら",
+    }
+
+    for form, ending in negative_forms.items():
+        forms[("basic", form)] = prefix + ending
+
+    return forms
+
+
+def _zuru_forms(word: str) -> dict[tuple[str, str], str]:
+    stem = _require_ending(word, "ずる")
+    forms = _generate_surface_forms(stem + "じる", "v1")
+
+    forms[("basic", "nonpast")] = word
+    forms[("basic", "conditional_ba")] = stem + "ずれば"
+    forms[("basic", "conditional_ba_alternative")] = stem + "じれば"
+    forms[("basic", "imperative_alternative")] = stem + "ぜよ"
+    forms[("basic", "prohibitive")] = word + "な"
+
+    return forms
+
+
+def _special_suru_forms(word: str) -> dict[tuple[str, str], str]:
+    stem = _require_ending(word, "する")
+    regular = _generate_surface_forms(word, "vs-i")
+
+    shared_forms = {
+        "nonpast",
+        "past",
+        "polite",
+        "polite_negative",
+        "polite_past",
+        "polite_negative_past",
+        "te",
+        "conditional_ba",
+        "conditional_tara",
+        "polite_volitional",
+        "prohibitive",
+    }
+
+    forms = {
+        key: surface
+        for key, surface in regular.items()
+        if key[0] == "basic" and key[1] in shared_forms
+    }
+
+    forms[("basic", "imperative_formal")] = stem + "せよ"
+
+    return forms
+
+
+def _aisuru_forms(word: str) -> dict[tuple[str, str], str]:
+    if not word.endswith(("愛する", "あいする")):
+        raise ValueError("Aisuru forms require 愛する or あいする")
+
+    stem = _require_ending(word, "する")
+
+    # 愛す supplies 愛さない, 愛そう, 愛せ, and 愛せる.
+    forms = _generate_surface_forms(stem + "す", "v5s")
+
+    forms[("basic", "nonpast")] = word
+    forms[("basic", "conditional_ba")] = stem + "すれば"
+    forms[("basic", "conditional_ba_alternative")] = stem + "せば"
+    forms[("basic", "imperative_formal")] = stem + "せよ"
+    forms[("basic", "prohibitive")] = word + "な"
+
+    return forms
+
+
 def _generate_surface_forms(
     word: str,
     verb_class: str,
 ) -> dict[tuple[str, str], str]:
     if not word:
         raise ValueError("Dictionary form must not be empty")
+
+    if verb_class == "v1-s":
+        return _kureru_forms(word)
+
+    if verb_class == "v5aru":
+        return _honorific_aru_forms(word)
+
+    if verb_class == "v5r-i":
+        return _aru_forms(word)
+
+    if verb_class == "vz":
+        return _zuru_forms(word)
+
+    if verb_class == "vs-s":
+        return _special_suru_forms(word)
+
+    if verb_class == "vs-s-aisu":
+        return _aisuru_forms(word)
 
     if verb_class == "v1":
         stem = _require_ending(word, "る")

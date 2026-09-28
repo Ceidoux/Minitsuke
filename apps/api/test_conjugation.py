@@ -252,7 +252,7 @@ def test_preserves_potential_and_passive_interpretations():
         ("書く", "かく", "v1"),
         ("食べる", "たべる", "v5k"),
         ("学校", "がっこう", "vs-i"),
-        ("ある", "ある", "v5r-i"),
+        ("学校", "がっこう", "v5r-i"),
     ],
 )
 def test_rejects_mismatched_or_unsupported_classes(
