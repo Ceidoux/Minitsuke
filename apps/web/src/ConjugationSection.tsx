@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ConjugationTable } from './dictionary-api'
+import ConjugatedText from './ConjugatedText'
 
 type ConjugationSectionProps = {
   tables: ConjugationTable[]
@@ -18,6 +19,8 @@ const GROUP_LABELS: Record<string, string> = {
 
 const FORM_LABELS: Record<string, string> = {
   nonpast: 'Non-past',
+  attributive: 'Before a noun',
+  adverbial: 'Adverbial form',
   negative: 'Negative',
   past: 'Past',
   negative_past: 'Negative past',
@@ -107,9 +110,16 @@ export default function ConjugationSection({
             Applies to source senses {table.sense_positions.join(', ')}.
             {' '}These are grammatical forms; their use depends on the meaning
             and context.
-            {table.verb_class === 'cop'
-              ? ' Copula tables include related forms across registers of politeness.'
-              : ' Potential and passive forms can be identical.'}
+            {table.verb_class === 'cop' && (
+              ' Copula tables include related forms across registers of politeness.'
+            )}
+            {table.verb_class.startsWith('adj-') && (
+              ' Includes forms used before nouns and to modify predicates.'
+            )}
+            {table.verb_class !== 'cop' &&
+              !table.verb_class.startsWith('adj-') && (
+                ' Potential and passive forms can be identical.'
+              )}
           </p>
 
           {Object.entries(GROUP_LABELS).map(([group, label]) => {
@@ -145,8 +155,20 @@ export default function ConjugationSection({
                           <th scope="row">
                             {FORM_LABELS[item.form] ?? item.form}
                           </th>
-                          <td lang="ja">{item.written}</td>
-                          <td lang="ja">{item.reading}</td>
+                          <td lang="ja">
+                            <ConjugatedText
+                              dictionaryForm={table.written}
+                              text={item.written}
+                              wordClass={table.verb_class}
+                            />
+                          </td>
+                          <td lang="ja">
+                            <ConjugatedText
+                              dictionaryForm={table.reading}
+                              text={item.reading}
+                              wordClass={table.verb_class}
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>

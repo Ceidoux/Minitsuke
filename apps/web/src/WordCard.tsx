@@ -1,9 +1,16 @@
 import { getEntryHeading, isUsuallyKana } from './entry-presentation'
-import type { DictionaryEntry } from './dictionary-api'
+import type {
+  ConjugationCompletion,
+  DictionaryEntry,
+} from './dictionary-api'
+import ConjugationMatches from './ConjugationMatches'
+
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
+import HighlightedText from './HighlightedText'
 
 type WordCardProps = {
   entry: DictionaryEntry
+  searchQuery?: string
   selected?: boolean
   onSelect?: (sourceId: number, trigger: HTMLButtonElement) => void
   inflection?: {
@@ -11,10 +18,13 @@ type WordCardProps = {
     description: string
   }
   compact?: boolean
+  completions?: ConjugationCompletion[]
 }
 
 export default function WordCard({
   entry,
+  searchQuery = '',
+  completions = [],
   selected = false,
   onSelect,
   inflection,
@@ -108,32 +118,48 @@ export default function WordCard({
   onSelect(entry.source_id, event.currentTarget)
 }}
     >
-      {title}
+      <HighlightedText text={title} query={searchQuery} />
     </button>
   ) : (
-    title
+    <HighlightedText text={title} query={searchQuery} />
   )}
 </h3>
         {alternateWrittenForms.length > 0 && (
           <span className="alternate-written-forms">
             Also written:{' '}
-            <span lang="ja">{alternateWrittenForms.join(' / ')}</span>
-          </span>
+            <span lang="ja">
+              <HighlightedText
+                text={alternateWrittenForms.join(' / ')}
+                query={searchQuery}
+              />
+            </span>          </span>
         )}
         {entry.is_common && <span className="common-badge">Common</span>}
       </div>
       {inflection && (
         <p className="inflection-note">
-          <span lang="ja">{inflection.query}</span>
-          {' — '}
+          <span>
+            <HighlightedText
+              text={inflection.query}
+              query={searchQuery}
+            />
+          </span>          {' — '}
           {inflection.description}
         </p>
       )}
+      <ConjugationMatches
+        query={searchQuery}
+        matches={completions}
+      />
       <ul className="reading-list">
         {entry.readings.map((reading) => (
           <li key={reading.text}>
-            <span lang="ja">{reading.text}</span>
-
+            <span lang="ja">
+              <HighlightedText
+                text={reading.text}
+                query={searchQuery}
+              />
+            </span>
             {reading.no_kanji && (
               <span className="entry-note"> — used without kanji</span>
             )}

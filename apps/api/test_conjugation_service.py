@@ -134,3 +134,60 @@ def test_builds_kana_only_copula():
     assert len(tables) == 1
     assert tables[0].written == "だ"
     assert any(form.written == "だった" for form in tables[0].forms)
+
+
+def test_builds_i_adjective_table():
+    entry = make_entry("高い", "たかい", "adjective (keiyoushi)")
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "adj-i"
+    assert any(form.written == "高かった" for form in tables[0].forms)
+
+
+def test_builds_kana_only_ii_adjective_table():
+    entry = make_entry(
+        "いい",
+        "いい",
+        "adjective (keiyoushi) - yoi/ii class",
+    )
+    entry.written_forms = []
+    entry.readings[0].no_kanji = True
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "adj-ix"
+    assert any(form.reading == "よかった" for form in tables[0].forms)
+
+
+def test_na_adjective_uses_tag_instead_of_final_kana():
+    entry = make_entry(
+        "きれい",
+        "きれい",
+        "adjectival nouns or quasi-adjectives (keiyodoshi)",
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].verb_class == "adj-na"
+    assert any(form.written == "きれいだった" for form in tables[0].forms)
+    assert not any(form.written == "きれかった" for form in tables[0].forms)
+
+
+def test_adjective_tables_preserve_sense_restrictions():
+    entry = make_entry("高い", "たかい", "adjective (keiyoushi)")
+    entry.senses[0].restricted_to_readings = ["別の読み"]
+
+    assert build_conjugation_tables(entry) == ([], False)
+
+
+def test_unsupported_adjective_reading_marks_tables_incomplete():
+    entry = make_entry("高い", "たっけー", "adjective (keiyoushi)")
+
+    assert build_conjugation_tables(entry) == ([], True)

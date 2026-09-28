@@ -41,10 +41,21 @@ class JmdictEntryResponse(BaseModel):
     senses: list[JmdictSenseResponse]
 
 
+class ConjugationCompletionResponse(BaseModel):
+    written: str
+    reading: str
+    group: str
+    form: str
+    description: str
+
+
 class InflectionResponse(BaseModel):
     source_ids: list[int]
     description: str
     descriptions: dict[int, list[str]] = Field(default_factory=dict)
+    completions: dict[int, list[ConjugationCompletionResponse]] = Field(
+        default_factory=dict
+    )
 
 
 class JmdictSearchResponse(BaseModel):
