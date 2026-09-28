@@ -1,3 +1,4 @@
+from adjective_conjugation import conjugate_adjective
 from conjugation import conjugate_verb
 from copula_conjugation import conjugate_copula
 from japanese_text import normalize_reading
@@ -21,6 +22,12 @@ VERB_CLASSES = {
     "Godan verb - Iku/Yuku special class": "v5k-s",
     "Kuru verb - special class": "vk",
     "suru verb - included": "vs-i",
+}
+
+ADJECTIVE_CLASSES = {
+    "adjective (keiyoushi)": "adj-i",
+    "adjective (keiyoushi) - yoi/ii class": "adj-ix",
+    "adjectival nouns or quasi-adjectives (keiyodoshi)": "adj-na",
 }
 
 SURU_NOUN = "noun or participle which takes the aux. verb suru"
@@ -98,10 +105,11 @@ def build_conjugation_tables(
             continue
 
         for label in sense.parts_of_speech:
-            if label not in VERB_CLASSES and label not in {
-                SURU_NOUN,
-                SURU_SPECIAL,
-            }:
+            if (
+                label not in VERB_CLASSES
+                and label not in ADJECTIVE_CLASSES
+                and label not in {SURU_NOUN, SURU_SPECIAL}
+            ):
                 if label.startswith(
                     (
                         "Ichidan verb",
@@ -120,8 +128,9 @@ def build_conjugation_tables(
             for original_written, original_reading in pairs:
                 written = original_written
                 reading = original_reading
-
-                if label == SURU_NOUN:
+                if label in ADJECTIVE_CLASSES:
+                    verb_class = ADJECTIVE_CLASSES[label]
+                elif label == SURU_NOUN:
                     verb_class = "vs-i"
                     written += "する"
                     reading += "する"
@@ -146,7 +155,10 @@ def build_conjugation_tables(
                     continue
 
                 try:
-                    forms = conjugate_verb(written, reading, verb_class)
+                    if verb_class in ADJECTIVE_CLASSES.values():
+                        forms = conjugate_adjective(written, reading, verb_class)
+                    else:
+                        forms = conjugate_verb(written, reading, verb_class)
                 except ValueError:
                     # Some dictionary spellings cannot yet be generated.
                     # Keep other supported tables and disclose the omission.

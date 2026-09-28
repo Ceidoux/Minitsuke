@@ -677,3 +677,29 @@ button:focus-visible {
     height: calc(100dvh - 88px);
   }
 }
+
+mark.search-match,
+.conjugation-ending {
+  color: #e8a0b5;
+  background: transparent;
+  font: inherit;
+}
+
+.conjugation-matches {
+  margin-block: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.conjugation-matches p {
+  margin-block: 0.15rem;
+}
+
+.conjugation-match-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.conjugation-match-list li {
+  margin-block: 0.15rem;
+}

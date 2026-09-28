@@ -132,6 +132,10 @@ export default function SearchResults({
               compact
               key={entry.source_id}
               entry={entry}
+              searchQuery={page.query}
+              completions={
+                page.inflection?.completions?.[String(entry.source_id)]
+              }
               selected={entry.source_id === selectedSourceId}
               onSelect={onSelect}
               inflection={

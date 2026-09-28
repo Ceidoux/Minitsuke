@@ -461,3 +461,256 @@ def test_copula_pronunciation_alias_requires_explicit_opt_in(
 
     assert matches == ()
     assert descriptions == {}
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "label", "description"),
+    [
+        (
+            "高くありませんでした",
+            "高い",
+            "たかい",
+            "adjective (keiyoushi)",
+            "polite negative past alternative",
+        ),
+        (
+            "takakunakatta",
+            "高い",
+            "たかい",
+            "adjective (keiyoushi)",
+            "negative past",
+        ),
+        (
+            "よかった",
+            None,
+            "いい",
+            "adjective (keiyoushi) - yoi/ii class",
+            "past",
+        ),
+        (
+            "yokatta",
+            None,
+            "いい",
+            "adjective (keiyoushi) - yoi/ii class",
+            "past",
+        ),
+        (
+            "格好良くない",
+            "格好良い",
+            "かっこいい",
+            "adjective (keiyoushi) - yoi/ii class",
+            "negative",
+        ),
+        (
+            "kakkoyokatta",
+            "格好いい",
+            "かっこいい",
+            "adjective (keiyoushi) - yoi/ii class",
+            "past",
+        ),
+        (
+            "静かだった",
+            "静か",
+            "しずか",
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "past",
+        ),
+        (
+            "shizukajanai",
+            "静か",
+            "しずか",
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "negative colloquial",
+        ),
+        (
+            "きれいでした",
+            "綺麗",
+            "きれい",
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "polite past",
+        ),
+        (
+            "かわいかった",
+            None,
+            "かわいい",
+            "adjective (keiyoushi)",
+            "past",
+        ),
+    ],
+)
+def test_search_finds_generated_adjective_forms(
+    db_session: Session,
+    query: str,
+    written: str | None,
+    reading: str,
+    label: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,) if written is not None else (),
+        reading=reading,
+        label=label,
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == [description]
+
+
+def test_generated_adjective_lookup_rejects_noun_homophone(
+    db_session: Session,
+):
+    from conjugation_lookup import find_generated_inflections
+
+    add_entry(
+        db_session,
+        100,
+        forms=("鷹井",),
+        reading="たかい",
+        label="noun (common) (futsuumeishi)",
+    )
+
+    matches, descriptions = find_generated_inflections(
+        db_session,
+        "たかかった",
+    )
+
+    assert matches == ()
+    assert descriptions == {}
+
+
+@pytest.mark.parametrize(
+    ("query", "written", "reading", "label", "expected"),
+    [
+        (
+            "takakuna",
+            "高い",
+            "たかい",
+            "adjective (keiyoushi)",
+            "高くない",
+        ),
+        (
+            "高くな",
+            "高い",
+            "たかい",
+            "adjective (keiyoushi)",
+            "高くない",
+        ),
+        (
+            "takakun",
+            "高い",
+            "たかい",
+            "adjective (keiyoushi)",
+            "高くない",
+        ),
+        (
+            "食べま",
+            "食べる",
+            "たべる",
+            "Ichidan verb",
+            "食べます",
+        ),
+        (
+            "tabemas",
+            "食べる",
+            "たべる",
+            "Ichidan verb",
+            "食べます",
+        ),
+        (
+            "shizukajana",
+            "静か",
+            "しずか",
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "静かじゃない",
+        ),
+    ],
+)
+def test_search_finds_incomplete_conjugations(
+    db_session: Session,
+    query: str,
+    written: str,
+    reading: str,
+    label: str,
+    expected: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=(written,),
+        reading=reading,
+        label=label,
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.source_ids == []
+    assert expected in {item.written for item in response.inflection.completions[100]}
+
+
+def test_prefix_lookup_rejects_incompatible_dictionary_class(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("鷹井",),
+        reading="たかい",
+        label="noun (common) (futsuumeishi)",
+    )
+
+    response = search_jmdict(db_session, "takakuna")
+
+    assert response.results == []
+    assert response.inflection is None
+
+
+def test_prefix_results_preserve_exact_matches_and_pagination(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("たかくな",),
+        reading="たかくな",
+        label="expression",
+    )
+    add_entry(
+        db_session,
+        200,
+        forms=("高い",),
+        reading="たかい",
+        label="adjective (keiyoushi)",
+    )
+
+    first = search_jmdict(db_session, "takakuna", limit=1)
+    second = search_jmdict(db_session, "takakuna", limit=1, offset=1)
+
+    assert [entry.source_id for entry in first.results] == [100]
+    assert first.has_more is True
+    assert [entry.source_id for entry in second.results] == [200]
+    assert second.has_more is False
+
+
+def test_complete_match_keeps_its_existing_explanation(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("高い",),
+        reading="たかい",
+        label="adjective (keiyoushi)",
+    )
+
+    response = search_jmdict(db_session, "takakunai")
+
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == ["negative"]
+    assert 100 not in response.inflection.completions

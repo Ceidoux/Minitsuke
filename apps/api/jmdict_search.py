@@ -2,7 +2,10 @@ import unicodedata
 
 from sqlalchemy.orm import Session
 
-from conjugation_lookup import find_generated_inflections
+from conjugation_lookup import (
+    find_conjugation_completions,
+    find_generated_inflections,
+)
 from deconjugation import describe_inflection, extract_inflection_candidate
 from deconjugation_service import find_inflection_matches
 from japanese_text import normalize_reading
@@ -63,9 +66,21 @@ def search_jmdict(
     inflection_entry_ids: tuple[int, ...] = ()
     inflection = None
 
-    analysis_text = (
-        cleaned if contains_japanese else interpret_romaji(cleaned).complete_reading
-    )
+    prefix_inputs: dict[str, bool] = {}
+
+    if contains_japanese:
+        analysis_text = cleaned
+        prefix_inputs[cleaned] = False
+    else:
+        interpretation = interpret_romaji(cleaned)
+        analysis_text = interpretation.complete_reading
+
+        prefix_inputs.update(
+            (prefix, True) for prefix in interpretation.completion_prefixes
+        )
+
+        if analysis_text is not None:
+            prefix_inputs[analysis_text] = False
 
     if analysis_text is not None and len(analysis_text) <= MAX_SENTENCE_LENGTH:
         matches, descriptions = find_generated_inflections(
@@ -110,6 +125,31 @@ def search_jmdict(
                             match.source_id: [explanation] for match in matches
                         },
                     )
+    completion_matches, completions = find_conjugation_completions(
+        session,
+        prefix_inputs,
+        exclude_source_ids=(
+            tuple(inflection.source_ids) if inflection is not None else ()
+        ),
+    )
+
+    if completion_matches:
+        inflection_entry_ids = tuple(
+            dict.fromkeys(
+                (
+                    *inflection_entry_ids,
+                    *(match.entry_id for match in completion_matches),
+                )
+            )
+        )
+
+        if inflection is None:
+            inflection = InflectionResponse(
+                source_ids=[],
+                description="",
+            )
+
+        inflection.completions = completions
     if all(_is_kana(character) for character in normalized):
         page = find_reading_matches(
             session,

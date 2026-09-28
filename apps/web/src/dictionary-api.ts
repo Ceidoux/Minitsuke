@@ -42,10 +42,19 @@ export type DictionaryEntry = {
   conjugations_incomplete?: boolean
 }
 
+export type ConjugationCompletion = {
+  written: string
+  reading: string
+  group: string
+  form: string
+  description: string
+}
+
 export type InflectionMatch = {
   source_ids: number[]
   description: string
   descriptions?: Record<string, string[]>
+  completions?: Record<string, ConjugationCompletion[]>
 }
 
 export type SearchResponse = {

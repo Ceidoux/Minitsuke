@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import lru_cache
 
+from adjective_conjugation import conjugate_adjective
 from conjugation import GODAN_ENDINGS, conjugate_verb
 from copula_conjugation import conjugate_copula
 from japanese_text import normalize_written_form
@@ -81,6 +82,55 @@ def _reverse_rules() -> tuple[ReverseRule, ...]:
 
 
 @lru_cache(maxsize=1)
+def _adjective_reverse_rules() -> tuple[ReverseRule, ...]:
+    marker = "仮"
+
+    # Written and reading endings can differ, as in 良い / よい.
+    patterns = (
+        ("adj-i", "い", "い"),
+        ("adj-ix", "いい", "いい"),
+        ("adj-ix", "よい", "よい"),
+        ("adj-ix", "い", "よい"),
+        ("adj-na", "", ""),
+    )
+
+    rules: dict[ReverseRule, None] = {}
+
+    for adjective_class, written_ending, reading_ending in patterns:
+        template = marker + written_ending
+        generated = conjugate_adjective(
+            template,
+            marker + reading_ending,
+            adjective_class,
+        )
+
+        for item in generated:
+            # Plain i-adjectives and their attributive forms are unchanged.
+            # Na-adjective nonpast forms add だ and must remain searchable.
+            if item.written == template:
+                continue
+
+            if not item.written.startswith(marker):
+                raise ValueError("Adjective rule changed the template stem")
+
+            surface_ending = normalize_written_form(item.written[len(marker) :])
+
+            if not surface_ending:
+                raise ValueError("Adjective rule produced an empty ending")
+
+            rule = ReverseRule(
+                surface_ending=surface_ending,
+                dictionary_ending=written_ending,
+                verb_class=adjective_class,
+                group=item.group,
+                form=item.form,
+            )
+            rules[rule] = None
+
+    return tuple(rules)
+
+
+@lru_cache(maxsize=1)
 def _copula_reverse_index() -> dict[str, tuple[ReverseCandidate, ...]]:
     candidates_by_surface: dict[str, dict[ReverseCandidate, None]] = {}
 
@@ -129,14 +179,14 @@ def reverse_conjugate(text: str) -> tuple[ReverseCandidate, ...]:
         _copula_reverse_index().get(cleaned, ())
     )
 
-    for rule in _reverse_rules():
+    for rule in (*_reverse_rules(), *_adjective_reverse_rules()):
         if not cleaned.endswith(rule.surface_ending):
             continue
 
         stem = cleaned[: -len(rule.surface_ending)]
 
-        # Regular verbs need a stem. Standalone する and 来る do not.
-        if not stem and rule.verb_class not in {"vs-i", "vk"}:
+        # Standalone する, 来る, and いい/よい can match without a prefix.
+        if not stem and rule.verb_class not in {"vs-i", "vk", "adj-ix"}:
             continue
 
         candidate = ReverseCandidate(
@@ -146,5 +196,63 @@ def reverse_conjugate(text: str) -> tuple[ReverseCandidate, ...]:
             form=rule.form,
         )
         candidates[candidate] = None
+
+    return tuple(candidates)
+
+
+def reverse_conjugate_prefix(text: str) -> tuple[ReverseCandidate, ...]:
+    cleaned = normalize_written_form(text.strip())
+
+    if (
+        not cleaned
+        or len(cleaned) > 1000
+        or any(character.isspace() for character in cleaned)
+    ):
+        return ()
+
+    candidates: dict[ReverseCandidate, None] = {}
+
+    # Copulas have complete surface forms rather than reusable stems.
+    for surface, surface_candidates in _copula_reverse_index().items():
+        if surface != cleaned and surface.startswith(cleaned):
+            for candidate in surface_candidates:
+                candidates[candidate] = None
+
+    rules = (*_reverse_rules(), *_adjective_reverse_rules())
+
+    for rule in rules:
+        # Require at least one character of the generated ending
+        # to remain untyped.
+        maximum_typed_length = min(
+            len(cleaned),
+            len(rule.surface_ending) - 1,
+        )
+
+        for typed_length in range(maximum_typed_length + 1):
+            if typed_length == 0:
+                # The user may have typed only the stem: 食べ.
+                stem = cleaned
+            else:
+                typed_ending = rule.surface_ending[:typed_length]
+
+                if not cleaned.endswith(typed_ending):
+                    continue
+
+                stem = cleaned[:-typed_length]
+
+            if not stem and rule.verb_class not in {
+                "vs-i",
+                "vk",
+                "adj-ix",
+            }:
+                continue
+
+            candidate = ReverseCandidate(
+                dictionary_form=stem + rule.dictionary_ending,
+                verb_class=rule.verb_class,
+                group=rule.group,
+                form=rule.form,
+            )
+            candidates[candidate] = None
 
     return tuple(candidates)
