@@ -51,9 +51,23 @@ def _finite_forms(
     }
 
 
-def _ichidan_finite_forms(word: str) -> dict[str, str]:
+def _ichidan_derived_forms(word: str) -> dict[str, str]:
     stem = _require_ending(word, "る")
-    return _finite_forms(word, stem, stem + "ない", stem + "た")
+    forms = _finite_forms(word, stem, stem + "ない", stem + "た")
+
+    forms.update(
+        {
+            "te": stem + "て",
+            "negative_te": stem + "なくて",
+            "without_doing": stem + "ないで",
+            "conditional_ba": stem + "れば",
+            "negative_conditional_ba": stem + "なければ",
+            "conditional_tara": stem + "たら",
+            "negative_conditional_tara": stem + "なかったら",
+        }
+    )
+
+    return forms
 
 
 def _kureru_forms(word: str) -> dict[tuple[str, str], str]:
@@ -185,6 +199,66 @@ def _aisuru_forms(word: str) -> dict[tuple[str, str], str]:
     return forms
 
 
+def _godan_derived_forms(
+    word: str,
+    verb_class: str,
+) -> dict[str, str]:
+    ending, a, i, e, _, te_ending, past_ending = GODAN_ENDINGS[verb_class]
+    stem = _require_ending(word, ending)
+    negative = stem + a + "ない"
+    past = stem + past_ending
+
+    forms = _finite_forms(word, stem + i, negative, past)
+    negative_stem = _require_ending(negative, "い")
+
+    forms.update(
+        {
+            "te": stem + te_ending,
+            "negative_te": negative_stem + "くて",
+            "without_doing": negative + "で",
+            "conditional_ba": stem + e + "ば",
+            "negative_conditional_ba": negative_stem + "ければ",
+            "conditional_tara": past + "ら",
+            "negative_conditional_tara": negative_stem + "かったら",
+        }
+    )
+
+    return forms
+
+
+def _te_auxiliary_forms(te: str) -> dict[tuple[str, str], str]:
+    if te.endswith("て"):
+        contracted_oku = te[:-1] + "とく"
+        contracted_shimau = te[:-1] + "ちゃう"
+    elif te.endswith("で"):
+        contracted_oku = te[:-1] + "どく"
+        contracted_shimau = te[:-1] + "じゃう"
+    else:
+        raise ValueError("Te-form must end with て or で")
+
+    constructions = (
+        ("te_iru_colloquial", te + "る", "v1"),
+        ("te_oku", te + "おく", "v5k"),
+        ("te_oku_colloquial", contracted_oku, "v5k"),
+        ("te_shimau", te + "しまう", "v5u"),
+        ("te_shimau_colloquial", contracted_shimau, "v5u"),
+    )
+
+    results = {}
+
+    for group, dictionary, verb_class in constructions:
+        forms = (
+            _ichidan_derived_forms(dictionary)
+            if verb_class == "v1"
+            else _godan_derived_forms(dictionary, verb_class)
+        )
+
+        for form, surface in forms.items():
+            results[(group, form)] = surface
+
+    return results
+
+
 def _generate_surface_forms(
     word: str,
     verb_class: str,
@@ -314,8 +388,32 @@ def _generate_surface_forms(
     elif verb_class == "vk":
         derived["potential_colloquial"] = ko + "れる"
     for group, dictionary in derived.items():
-        for form, surface in _ichidan_finite_forms(dictionary).items():
+        for form, surface in _ichidan_derived_forms(dictionary).items():
             results[(group, form)] = surface
+
+    results.update(_te_auxiliary_forms(te))
+
+    voice_groups = (
+        "potential",
+        "passive",
+        "causative",
+        "causative_passive",
+        "potential_colloquial",
+    )
+
+    for voice_group in voice_groups:
+        dictionary = derived.get(voice_group)
+        if dictionary is None:
+            continue
+
+        derived_te = _require_ending(dictionary, "る") + "て"
+
+        for form, surface in _ichidan_derived_forms(derived_te + "いる").items():
+            results[(f"{voice_group}+te_iru", form)] = surface
+
+        for (auxiliary_group, form), surface in _te_auxiliary_forms(derived_te).items():
+            combined_group = f"{voice_group}+{auxiliary_group}"
+            results[(combined_group, form)] = surface
 
     return results
 

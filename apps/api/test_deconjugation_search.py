@@ -1008,3 +1008,251 @@ def test_search_finds_special_suru_completions(
     assert [entry.source_id for entry in response.results] == [100]
     assert response.inflection is not None
     assert expected in {item.written for item in response.inflection.completions[100]}
+
+
+@pytest.mark.parametrize("query", ["食べられたら", "taberaretara"])
+def test_search_finds_extended_derived_form(
+    db_session: Session,
+    query: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert set(response.inflection.descriptions[100]) == {
+        "potential, conditional tara",
+        "passive, conditional tara",
+    }
+
+
+def test_search_finds_godan_potential_conditional(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        forms=("書く",),
+        reading="かく",
+        label="Godan verb with 'ku' ending",
+    )
+
+    response = search_jmdict(db_session, "kakereba")
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == ["potential, conditional ba"]
+
+
+def test_search_suggests_incomplete_derived_conditional(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, "taberarenakere")
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert any(
+        item.reading == "たべられなければ"
+        and item.group == "potential"
+        and item.form == "negative_conditional_ba"
+        for item in response.inflection.completions[100]
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "description"),
+    [
+        ("読んでます", "ている construction — colloquial, polite non-past"),
+        ("yondoku", "ておく construction — colloquial"),
+        ("読んじゃった", "てしまう construction — colloquial, past"),
+        ("yonjatta", "てしまう construction — colloquial, past"),
+        ("読んでしまった", "てしまう construction, past"),
+    ],
+)
+def test_search_finds_auxiliary_constructions(
+    db_session: Session,
+    query: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("読む",),
+        reading="よむ",
+        label="Godan verb with 'mu' ending",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert response.inflection.descriptions[100] == [description]
+
+
+def test_search_suggests_incomplete_contracted_auxiliary(
+    db_session: Session,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("読む",),
+        reading="よむ",
+        label="Godan verb with 'mu' ending",
+    )
+
+    response = search_jmdict(db_session, "yonjatt")
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert any(
+        item.reading == "よんじゃった" and item.group == "te_shimau_colloquial"
+        for item in response.inflection.completions[100]
+    )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "食べられている",
+        "taberareteiru",
+    ],
+)
+def test_search_finds_combined_conjugations(
+    db_session: Session,
+    query: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert {
+        "potential → ている construction",
+        "passive → ている construction",
+    } <= set(response.inflection.descriptions[100])
+
+
+def test_search_completes_combined_conjugations(db_session: Session):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, "tabesaserareteima")
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert any(
+        item.group == "causative_passive+te_iru"
+        and item.form == "polite"
+        and item.reading == "たべさせられています"
+        for item in response.inflection.completions[100]
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "description"),
+    [
+        (
+            "食べられてしまった",
+            "passive → てしまう construction, past",
+        ),
+        (
+            "taberarechatta",
+            "passive → てしまう construction — colloquial, past",
+        ),
+        (
+            "食べさせておく",
+            "causative → ておく construction",
+        ),
+        (
+            "tabesasetoku",
+            "causative → ておく construction — colloquial",
+        ),
+        (
+            "食べさせられてしまいました",
+            "causative-passive → てしまう construction, polite past",
+        ),
+    ],
+)
+def test_search_finds_combined_auxiliaries(
+    db_session: Session,
+    query: str,
+    description: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert description in response.inflection.descriptions[100]
+
+
+@pytest.mark.parametrize(
+    ("query", "group", "form", "reading"),
+    [
+        (
+            "taberarechatt",
+            "passive+te_shimau_colloquial",
+            "past",
+            "たべられちゃった",
+        ),
+        (
+            "食べさせておきま",
+            "causative+te_oku",
+            "polite",
+            "たべさせておきます",
+        ),
+    ],
+)
+def test_search_completes_combined_auxiliaries(
+    db_session: Session,
+    query: str,
+    group: str,
+    form: str,
+    reading: str,
+):
+    add_entry(
+        db_session,
+        100,
+        forms=("食べる",),
+        reading="たべる",
+        label="Ichidan verb",
+    )
+
+    response = search_jmdict(db_session, query)
+
+    assert [entry.source_id for entry in response.results] == [100]
+    assert response.inflection is not None
+    assert any(
+        item.group == group and item.form == form and item.reading == reading
+        for item in response.inflection.completions[100]
+    )
