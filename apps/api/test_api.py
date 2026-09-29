@@ -54,10 +54,12 @@ def test_search_returns_complete_entry(
                 "source_id": 100,
                 "is_common": True,
                 "written_forms": ["学校"],
+                "written_form_info": {},
                 "readings": [
                     {
                         "text": "がっこう",
                         "no_kanji": False,
+                        "info": [],
                         "restricted_to": [],
                     },
                 ],
@@ -261,10 +263,12 @@ def test_entry_detail_defaults_to_english(
         "conjugations_incomplete": False,
         "is_common": True,
         "written_forms": ["学校"],
+        "written_form_info": {},
         "readings": [
             {
                 "text": "がっこう",
                 "no_kanji": False,
+                "info": [],
                 "restricted_to": [],
             },
         ],

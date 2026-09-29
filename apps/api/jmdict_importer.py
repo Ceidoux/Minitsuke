@@ -10,12 +10,14 @@ from models import (
     JmdictGlossRecord,
     JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
+    JmdictReadingInfoRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
     JmdictSenseNoteRecord,
     JmdictSenseReadingRestrictionRecord,
     JmdictSenseRecord,
     JmdictSenseWrittenFormRestrictionRecord,
+    JmdictWrittenFormInfoRecord,
     JmdictWrittenFormRecord,
 )
 
@@ -32,6 +34,8 @@ def validate_entry_for_import(entry: JmdictEntry) -> None:
 
     if len(written_forms) != len(entry.written_forms):
         raise ValueError("Entry contains duplicate written forms")
+    if set(entry.written_form_info) - written_forms:
+        raise ValueError("Written-form annotation references an unknown written form")
 
     if len(reading_texts) != len(entry.readings):
         raise ValueError("Entry contains duplicate readings")
@@ -94,7 +98,15 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
     }
     session.add_all(forms.values())
     session.flush()
-
+    for text, labels in entry.written_form_info.items():
+        for position, label in enumerate(labels, start=1):
+            session.add(
+                JmdictWrittenFormInfoRecord(
+                    written_form_id=forms[text].id,
+                    label=label,
+                    position=position,
+                )
+            )
     readings = {
         reading.text: JmdictReadingRecord(
             entry_id=record.id,
@@ -107,7 +119,15 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
     }
     session.add_all(readings.values())
     session.flush()
-
+    for reading in entry.readings:
+        for position, label in enumerate(reading.info, start=1):
+            session.add(
+                JmdictReadingInfoRecord(
+                    reading_id=readings[reading.text].id,
+                    label=label,
+                    position=position,
+                )
+            )
     for reading in entry.readings:
         for text in dict.fromkeys(reading.restricted_to):
             session.add(

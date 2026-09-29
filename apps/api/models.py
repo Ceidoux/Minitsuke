@@ -364,3 +364,47 @@ class JmdictSenseNoteRecord(Base):
     )
     text: Mapped[str] = mapped_column(Text)
     position: Mapped[int] = mapped_column()
+
+
+class JmdictWrittenFormInfoRecord(Base):
+    __tablename__ = "jmdict_written_form_info"
+    __table_args__ = (
+        UniqueConstraint(
+            "written_form_id",
+            "position",
+            name="uq_jmdict_written_form_info_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_written_form_info_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    written_form_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_written_forms.id", ondelete="CASCADE"),
+    )
+    label: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
+
+
+class JmdictReadingInfoRecord(Base):
+    __tablename__ = "jmdict_reading_info"
+    __table_args__ = (
+        UniqueConstraint(
+            "reading_id",
+            "position",
+            name="uq_jmdict_reading_info_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_reading_info_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    reading_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_readings.id", ondelete="CASCADE"),
+    )
+    label: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()

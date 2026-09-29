@@ -4,6 +4,8 @@ import {
   getEntryHeading,
   isUsuallyKana,
   USUALLY_KANA,
+  SEARCH_ONLY_READING,
+  SEARCH_ONLY_WRITTEN,
 } from './entry-presentation'
 
 function makeEntry(): DictionaryEntry {
@@ -30,6 +32,7 @@ function makeEntry(): DictionaryEntry {
 test('uses kana as the heading and preserves written alternatives', () => {
   expect(getEntryHeading(makeEntry())).toEqual({
     title: 'この',
+    titleWrittenForms: [],
     alternateWrittenForms: ['此の', '斯の'],
   })
 })
@@ -74,4 +77,86 @@ test('handles entries without usage annotations', () => {
 
   expect(getEntryHeading(entry).title).toBe('此の / 斯の')
   expect(isUsuallyKana(entry.senses[0])).toBe(false)
+})
+
+test('moves search-only spellings out of the heading', () => {
+  const entry = makeEntry()
+  entry.senses[0].misc = []
+  entry.written_form_info = {
+    此の: [SEARCH_ONLY_WRITTEN],
+  }
+
+  expect(getEntryHeading(entry)).toEqual({
+    title: '斯の',
+    titleWrittenForms: ['斯の'],
+    alternateWrittenForms: ['此の'],
+  })
+
+  expect(entry.written_forms).toEqual(['此の', '斯の'])
+})
+
+test('skips search-only readings when choosing a kana-first heading', () => {
+  const entry = makeEntry()
+  entry.readings[0].info = [SEARCH_ONLY_READING]
+
+  expect(getEntryHeading(entry).title).toBe('こん')
+})
+
+test('does not substitute an incompatible reading for a restricted kana preference', () => {
+  const entry = makeEntry()
+  entry.senses[0].restricted_to_readings = ['この']
+  entry.readings[0].info = [SEARCH_ONLY_READING]
+
+  expect(getEntryHeading(entry)).toEqual({
+    title: '此の / 斯の',
+    titleWrittenForms: ['此の', '斯の'],
+    alternateWrittenForms: [],
+  })
+})
+
+test('uses an ordinary reading when all spellings are search-only', () => {
+  const entry = makeEntry()
+  entry.senses[0].misc = []
+  entry.written_form_info = {
+    此の: [SEARCH_ONLY_WRITTEN],
+    斯の: [SEARCH_ONLY_WRITTEN],
+  }
+
+  expect(getEntryHeading(entry)).toEqual({
+    title: 'この',
+    titleWrittenForms: [],
+    alternateWrittenForms: ['此の', '斯の'],
+  })
+})
+
+test('prefers an ordinary reading in a kana-only entry', () => {
+  const entry = makeEntry()
+  entry.written_forms = []
+  entry.senses[0].misc = []
+  entry.readings[0].info = [SEARCH_ONLY_READING]
+
+  expect(getEntryHeading(entry)).toEqual({
+    title: 'こん',
+    titleWrittenForms: [],
+    alternateWrittenForms: [],
+  })
+})
+
+test('retains a heading when every available form is search-only', () => {
+  const entry = makeEntry()
+  entry.written_forms = []
+  entry.readings = [
+    {
+      text: 'この',
+      no_kanji: true,
+      restricted_to: [],
+      info: [SEARCH_ONLY_READING],
+    },
+  ]
+
+  expect(getEntryHeading(entry)).toEqual({
+    title: 'この',
+    titleWrittenForms: [],
+    alternateWrittenForms: [],
+  })
 })

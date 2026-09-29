@@ -10,12 +10,14 @@ from models import (
     JmdictGlossRecord,
     JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
+    JmdictReadingInfoRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
     JmdictSenseNoteRecord,
     JmdictSenseReadingRestrictionRecord,
     JmdictSenseRecord,
     JmdictSenseWrittenFormRestrictionRecord,
+    JmdictWrittenFormInfoRecord,
     JmdictWrittenFormRecord,
 )
 
@@ -25,6 +27,8 @@ class EntryBasics:
     entries: tuple[JmdictEntryRecord, ...]
     written_forms: tuple[JmdictWrittenFormRecord, ...]
     readings: tuple[JmdictReadingRecord, ...]
+    written_form_info: tuple[JmdictWrittenFormInfoRecord, ...] = ()
+    reading_info: tuple[JmdictReadingInfoRecord, ...] = ()
 
 
 def load_entry_basics(
@@ -62,7 +66,33 @@ def load_entry_basics(
             JmdictReadingRecord.position,
         )
     ).all()
+    written_form_info = session.scalars(
+        select(JmdictWrittenFormInfoRecord)
+        .join(
+            JmdictWrittenFormRecord,
+            JmdictWrittenFormRecord.id == JmdictWrittenFormInfoRecord.written_form_id,
+        )
+        .where(JmdictWrittenFormRecord.entry_id.in_(ordered_ids))
+        .order_by(
+            JmdictWrittenFormRecord.entry_id,
+            JmdictWrittenFormRecord.position,
+            JmdictWrittenFormInfoRecord.position,
+        )
+    ).all()
 
+    reading_info = session.scalars(
+        select(JmdictReadingInfoRecord)
+        .join(
+            JmdictReadingRecord,
+            JmdictReadingRecord.id == JmdictReadingInfoRecord.reading_id,
+        )
+        .where(JmdictReadingRecord.entry_id.in_(ordered_ids))
+        .order_by(
+            JmdictReadingRecord.entry_id,
+            JmdictReadingRecord.position,
+            JmdictReadingInfoRecord.position,
+        )
+    ).all()
     return EntryBasics(
         entries=tuple(
             entries_by_id[entry_id]
@@ -71,6 +101,8 @@ def load_entry_basics(
         ),
         written_forms=tuple(written_forms),
         readings=tuple(readings),
+        written_form_info=tuple(written_form_info),
+        reading_info=tuple(reading_info),
     )
 
 

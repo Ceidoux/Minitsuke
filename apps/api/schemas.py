@@ -23,6 +23,7 @@ class JmdictReadingResponse(BaseModel):
     text: str
     no_kanji: bool
     restricted_to: list[str]
+    info: list[str] = Field(default_factory=list)
 
 
 class JmdictSenseResponse(BaseModel):
@@ -42,6 +43,7 @@ class JmdictEntryResponse(BaseModel):
     written_forms: list[str]
     readings: list[JmdictReadingResponse]
     senses: list[JmdictSenseResponse]
+    written_form_info: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class ConjugationCompletionResponse(BaseModel):

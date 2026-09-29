@@ -273,3 +273,11 @@ uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
 
 Set DATABASE_URL to the intended database before running these commands.
 The migration creates the tables; the reimport populates them.
+
+Spelling and reading annotations appear beside the forms they describe.
+Search-only variants remain searchable and visible as annotated variants,
+while headings prefer ordinary forms when available.
+
+Existing installations must apply the form-annotation migration and
+reimport JMdict to populate these annotations, using the migration and
+import commands documented above.
