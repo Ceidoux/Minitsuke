@@ -9,10 +9,12 @@ def test_response_preserves_senses_languages_and_restrictions():
                 "source_id": 1206730,
                 "is_common": True,
                 "written_forms": ["学校", "學校"],
+                "written_form_info": {},
                 "readings": [
                     {
                         "text": "がっこう",
                         "no_kanji": False,
+                        "info": [],
                         "restricted_to": ["学校"],
                     },
                 ],
@@ -94,11 +96,13 @@ def test_response_supports_kana_only_entry():
     result = response.model_dump(mode="json")["results"][0]
 
     assert result["written_forms"] == []
+    assert result["written_form_info"] == {}
     assert result["readings"] == [
         {
             "text": "ありがとう",
             "no_kanji": True,
             "restricted_to": [],
+            "info": [],
         },
     ]
 

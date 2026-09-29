@@ -62,15 +62,18 @@ def test_assembles_complete_entry_with_ordered_restrictions(db_session: Session)
         "source_id": 100,
         "is_common": True,
         "written_forms": ["学校", "學校"],
+        "written_form_info": {},
         "readings": [
             {
                 "text": "がっこう",
                 "no_kanji": False,
+                "info": [],
                 "restricted_to": ["学校", "學校"],
             },
             {
                 "text": "ガッコウ",
                 "no_kanji": False,
+                "info": [],
                 "restricted_to": [],
             },
         ],
@@ -115,10 +118,12 @@ def test_assembles_kana_only_entry(db_session: Session):
         "source_id": 100,
         "is_common": False,
         "written_forms": [],
+        "written_form_info": {},
         "readings": [
             {
                 "text": "ありがとう",
                 "no_kanji": True,
+                "info": [],
                 "restricted_to": [],
             },
         ],

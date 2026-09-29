@@ -30,7 +30,14 @@ def load_entries(
     forms_by_entry = {entry.id: [] for entry in basics.entries}
     readings_by_entry = {entry.id: [] for entry in basics.entries}
     senses_by_entry = {entry.id: [] for entry in basics.entries}
+    info_by_written_form = {form.id: [] for form in basics.written_forms}
+    info_by_reading = {reading.id: [] for reading in basics.readings}
 
+    for annotation in basics.written_form_info:
+        info_by_written_form[annotation.written_form_id].append(annotation.label)
+
+    for annotation in basics.reading_info:
+        info_by_reading[annotation.reading_id].append(annotation.label)
     for form in basics.written_forms:
         forms_by_entry[form.entry_id].append(form)
 
@@ -93,6 +100,7 @@ def load_entries(
             JmdictReadingResponse(
                 text=reading.text,
                 no_kanji=reading.no_kanji,
+                info=info_by_reading[reading.id],
                 restricted_to=[
                     form.text
                     for form in forms
@@ -127,6 +135,11 @@ def load_entries(
                 source_id=entry.source_id,
                 is_common=entry.is_common,
                 written_forms=[form.text for form in forms],
+                written_form_info={
+                    form.text: info_by_written_form[form.id]
+                    for form in forms
+                    if info_by_written_form[form.id]
+                },
                 readings=reading_responses,
                 senses=sense_responses,
             )

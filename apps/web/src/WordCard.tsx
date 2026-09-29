@@ -11,6 +11,7 @@ import ConjugationMatches from './ConjugationMatches'
 
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 import HighlightedText from './HighlightedText'
+import AnnotatedForm from './AnnotatedForm'
 
 type WordCardProps = {
   entry: DictionaryEntry
@@ -34,8 +35,34 @@ export default function WordCard({
   inflection,
   compact = false,
 }: WordCardProps) {
-  const { title, alternateWrittenForms } = getEntryHeading(entry)
+  const {
+    title,
+    titleWrittenForms,
+    alternateWrittenForms,
+  } = getEntryHeading(entry)
+  function renderWrittenForms(forms: string[]) {
+    return forms.map((form, index) => (
+      <span key={form}>
+        {index > 0 && ' / '}
+        <AnnotatedForm
+          text={form}
+          query={searchQuery}
+          info={entry.written_form_info?.[form]}
+        />
+      </span>
+    ))
+  }
 
+  const headingContent =
+    titleWrittenForms.length > 0 ? (
+      renderWrittenForms(titleWrittenForms)
+    ) : (
+      <AnnotatedForm
+        text={title}
+        query={searchQuery}
+        info={entry.readings.find((reading) => reading.text === title)?.info}
+      />
+    )
   const availableSenses = entry.senses
       .map((sense, sourcePosition) => ({
         ...sense,
@@ -105,6 +132,7 @@ export default function WordCard({
   {onSelect ? (
     <button
       className="word-title-button"
+      aria-label={title}
       type="button"
       aria-controls="word-detail-panel"
       aria-pressed={selected}
@@ -124,21 +152,17 @@ export default function WordCard({
   onSelect(entry.source_id, event.currentTarget)
 }}
     >
-      <HighlightedText text={title} query={searchQuery} />
+{headingContent}
     </button>
   ) : (
-    <HighlightedText text={title} query={searchQuery} />
+headingContent
   )}
 </h3>
         {alternateWrittenForms.length > 0 && (
           <span className="alternate-written-forms">
             Also written:{' '}
-            <span lang="ja">
-              <HighlightedText
-                text={alternateWrittenForms.join(' / ')}
-                query={searchQuery}
-              />
-            </span>          </span>
+            {renderWrittenForms(alternateWrittenForms)}
+          </span>
         )}
         {entry.is_common && <span className="common-badge">Common</span>}
       </div>
@@ -160,12 +184,11 @@ export default function WordCard({
       <ul className="reading-list">
         {entry.readings.map((reading) => (
           <li key={reading.text}>
-            <span lang="ja">
-              <HighlightedText
-                text={reading.text}
-                query={searchQuery}
-              />
-            </span>
+            <AnnotatedForm
+              text={reading.text}
+              query={searchQuery}
+              info={reading.info}
+            />
             {reading.no_kanji && (
               <span className="entry-note"> — used without kanji</span>
             )}

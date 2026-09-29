@@ -127,7 +127,7 @@ def test_query_count_does_not_grow_with_page_size(db_session: Session):
         event.remove(connection, "before_cursor_execute", record_statement)
 
     assert len(data.entries) == 30
-    assert single_count == page_count == 3
+    assert single_count == page_count == 5
 
 
 def test_loads_sense_children_with_grouping_and_order(db_session: Session):

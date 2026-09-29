@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -29,6 +29,7 @@ class JmdictReading:
     text: str
     restricted_to: tuple[str, ...] = ()
     no_kanji: bool = False
+    info: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class JmdictEntry:
     senses: tuple[JmdictSense, ...]
     is_common: bool = False
     frequency_band: int | None = None
+    written_form_info: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def parse_entry(element: ET.Element) -> JmdictEntry:
@@ -54,6 +56,19 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
     written_forms = tuple(
         node.text for node in element.findall("k_ele/keb") if node.text is not None
     )
+    written_form_info = {}
+
+    for written in element.findall("k_ele"):
+        written_text = written.findtext("keb")
+        if written_text is None:
+            continue
+
+        labels = tuple(
+            node.text for node in written.findall("ke_inf") if node.text is not None
+        )
+
+        if labels:
+            written_form_info[written_text] = labels
 
     readings = tuple(
         JmdictReading(
@@ -64,6 +79,9 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
                 if node.text is not None
             ),
             no_kanji=reading.find("re_nokanji") is not None,
+            info=tuple(
+                node.text for node in reading.findall("re_inf") if node.text is not None
+            ),
         )
         for reading in element.findall("r_ele")
         if (reading_text := reading.findtext("reb")) is not None
@@ -157,6 +175,7 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
         senses=tuple(senses),
         is_common=is_common,
         frequency_band=min(frequency_bands, default=None),
+        written_form_info=written_form_info,
     )
 
 

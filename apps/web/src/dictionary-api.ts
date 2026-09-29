@@ -2,6 +2,7 @@ export type DictionaryReading = {
   text: string
   no_kanji: boolean
   restricted_to: string[]
+  info?: string[]
 }
 
 export type DictionaryGloss = {
@@ -43,6 +44,7 @@ export type DictionaryEntry = {
   senses: DictionarySense[]
   conjugations?: ConjugationTable[]
   conjugations_incomplete?: boolean
+  written_form_info?: Record<string, string[]>
 }
 
 export type ConjugationCompletion = {
