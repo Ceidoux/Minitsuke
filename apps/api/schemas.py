@@ -31,6 +31,9 @@ class JmdictSenseResponse(BaseModel):
     restricted_to_written_forms: list[str]
     restricted_to_readings: list[str]
     misc: list[str] = Field(default_factory=list)
+    fields: list[str] = Field(default_factory=list)
+    dialects: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
 
 
 class JmdictEntryResponse(BaseModel):

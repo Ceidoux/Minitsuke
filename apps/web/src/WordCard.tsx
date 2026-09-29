@@ -1,4 +1,8 @@
-import { getEntryHeading, isUsuallyKana } from './entry-presentation'
+import {
+  getEntryHeading,
+  isUsuallyKana,
+  USUALLY_KANA,
+} from './entry-presentation'
 import type {
   ConjugationCompletion,
   DictionaryEntry,
@@ -33,10 +37,12 @@ export default function WordCard({
   const { title, alternateWrittenForms } = getEntryHeading(entry)
 
   const availableSenses = entry.senses
-    .map((sense, sourcePosition) => ({
-      ...sense,
-      sourcePosition,
-    }))
+      .map((sense, sourcePosition) => ({
+        ...sense,
+        sourcePosition,
+        usageLabels: Array.from(new Set(sense.misc ?? []))
+          .filter((label) => label !== USUALLY_KANA),
+      }))
     .filter((sense) => sense.glosses.length > 0)
 
   const displayedSenses = compact
@@ -185,11 +191,19 @@ export default function WordCard({
               {senses.map((sense) => (
                 <li key={sense.sourcePosition}>
                   {(isUsuallyKana(sense) ||
+                    sense.usageLabels.length > 0 ||
                     sense.parts_of_speech.length > 0) && (
                     <div className="sense-meta">
                       {isUsuallyKana(sense) && (
                         <span className="usage-badge">Usually kana</span>
                       )}
+
+                      {sense.usageLabels.map((label) => (
+                        <span className="usage-badge" key={label}>
+                          {label}
+                        </span>
+                      ))}
+
                       {sense.parts_of_speech.length > 0 && (
                         <span className="entry-note">
                           {sense.parts_of_speech.join(' · ')}
@@ -197,11 +211,36 @@ export default function WordCard({
                       )}
                     </div>
                   )}
+                  {((sense.fields?.length ?? 0) > 0 ||
+                    (sense.dialects?.length ?? 0) > 0) && (
+                    <div className="sense-meta">
+                      {(sense.fields ?? []).map((field, index) => (
+                        <span
+                          className="entry-note"
+                          key={`field-${index}`}
+                        >
+                          Field: {field}
+                        </span>
+                      ))}
 
+                      {(sense.dialects ?? []).map((dialect, index) => (
+                        <span
+                          className="entry-note"
+                          key={`dialect-${index}`}
+                        >
+                          Dialect: {dialect}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p lang={language.htmlLang}>
                     {sense.glosses.map((gloss) => gloss.text).join('; ')}
                   </p>
-
+                  {(sense.notes ?? []).map((note, index) => (
+                    <p className="entry-note" key={`note-${index}`}>
+                      {note}
+                    </p>
+                  ))}
                   {sense.restricted_to_written_forms.length > 0 && (
                     <p className="entry-note">
                       Applies to written forms:{' '}

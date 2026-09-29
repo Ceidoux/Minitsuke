@@ -15,6 +15,9 @@ export type DictionarySense = {
   restricted_to_written_forms: string[]
   restricted_to_readings: string[]
   misc?: string[]
+  fields?: string[]
+  dialects?: string[]
+  notes?: string[]
 }
 
 export type ConjugatedForm = {
