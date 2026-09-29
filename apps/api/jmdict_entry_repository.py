@@ -4,12 +4,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models import (
+    JmdictDialectRecord,
     JmdictEntryRecord,
+    JmdictFieldRecord,
     JmdictGlossRecord,
     JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
+    JmdictSenseNoteRecord,
     JmdictSenseReadingRestrictionRecord,
     JmdictSenseRecord,
     JmdictSenseWrittenFormRestrictionRecord,
@@ -77,6 +80,9 @@ class SenseDetails:
     glosses: tuple[JmdictGlossRecord, ...]
     parts_of_speech: tuple[JmdictPartOfSpeechRecord, ...]
     misc: tuple[JmdictMiscRecord, ...] = ()
+    fields: tuple[JmdictFieldRecord, ...] = ()
+    dialects: tuple[JmdictDialectRecord, ...] = ()
+    notes: tuple[JmdictSenseNoteRecord, ...] = ()
 
 
 def load_sense_details(
@@ -136,11 +142,55 @@ def load_sense_details(
             JmdictMiscRecord.position,
         )
     ).all()
+    fields = session.scalars(
+        select(JmdictFieldRecord)
+        .join(
+            JmdictSenseRecord,
+            JmdictSenseRecord.id == JmdictFieldRecord.sense_id,
+        )
+        .where(JmdictSenseRecord.entry_id.in_(entry_ids))
+        .order_by(
+            JmdictSenseRecord.entry_id,
+            JmdictSenseRecord.position,
+            JmdictFieldRecord.position,
+        )
+    ).all()
+
+    dialects = session.scalars(
+        select(JmdictDialectRecord)
+        .join(
+            JmdictSenseRecord,
+            JmdictSenseRecord.id == JmdictDialectRecord.sense_id,
+        )
+        .where(JmdictSenseRecord.entry_id.in_(entry_ids))
+        .order_by(
+            JmdictSenseRecord.entry_id,
+            JmdictSenseRecord.position,
+            JmdictDialectRecord.position,
+        )
+    ).all()
+
+    notes = session.scalars(
+        select(JmdictSenseNoteRecord)
+        .join(
+            JmdictSenseRecord,
+            JmdictSenseRecord.id == JmdictSenseNoteRecord.sense_id,
+        )
+        .where(JmdictSenseRecord.entry_id.in_(entry_ids))
+        .order_by(
+            JmdictSenseRecord.entry_id,
+            JmdictSenseRecord.position,
+            JmdictSenseNoteRecord.position,
+        )
+    ).all()
     return SenseDetails(
         senses=tuple(senses),
         glosses=tuple(glosses),
         parts_of_speech=tuple(parts_of_speech),
         misc=tuple(misc),
+        fields=tuple(fields),
+        dialects=tuple(dialects),
+        notes=tuple(notes),
     )
 
 

@@ -298,3 +298,69 @@ class JmdictSenseReadingRestrictionRecord(Base):
     entry_id: Mapped[int] = mapped_column()
     sense_id: Mapped[int] = mapped_column(primary_key=True)
     reading_id: Mapped[int] = mapped_column(primary_key=True)
+
+
+class JmdictFieldRecord(Base):
+    __tablename__ = "jmdict_fields"
+    __table_args__ = (
+        UniqueConstraint(
+            "sense_id",
+            "position",
+            name="uq_jmdict_fields_sense_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_fields_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sense_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_senses.id", ondelete="CASCADE"),
+    )
+    label: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
+
+
+class JmdictDialectRecord(Base):
+    __tablename__ = "jmdict_dialects"
+    __table_args__ = (
+        UniqueConstraint(
+            "sense_id",
+            "position",
+            name="uq_jmdict_dialects_sense_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_dialects_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sense_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_senses.id", ondelete="CASCADE"),
+    )
+    label: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
+
+
+class JmdictSenseNoteRecord(Base):
+    __tablename__ = "jmdict_sense_notes"
+    __table_args__ = (
+        UniqueConstraint(
+            "sense_id",
+            "position",
+            name="uq_jmdict_sense_notes_sense_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_sense_notes_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sense_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_senses.id", ondelete="CASCADE"),
+    )
+    text: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()

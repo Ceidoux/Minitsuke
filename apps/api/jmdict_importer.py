@@ -4,12 +4,15 @@ from sqlalchemy.orm import Session
 from japanese_text import normalize_reading, normalize_written_form
 from jmdict import JmdictEntry
 from models import (
+    JmdictDialectRecord,
     JmdictEntryRecord,
+    JmdictFieldRecord,
     JmdictGlossRecord,
     JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
+    JmdictSenseNoteRecord,
     JmdictSenseReadingRestrictionRecord,
     JmdictSenseRecord,
     JmdictSenseWrittenFormRestrictionRecord,
@@ -122,7 +125,32 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
         )
         session.add(sense_record)
         session.flush()
+        for field_position, label in enumerate(sense.fields, start=1):
+            session.add(
+                JmdictFieldRecord(
+                    sense_id=sense_record.id,
+                    label=label,
+                    position=field_position,
+                )
+            )
 
+        for dialect_position, label in enumerate(sense.dialects, start=1):
+            session.add(
+                JmdictDialectRecord(
+                    sense_id=sense_record.id,
+                    label=label,
+                    position=dialect_position,
+                )
+            )
+
+        for note_position, text in enumerate(sense.notes, start=1):
+            session.add(
+                JmdictSenseNoteRecord(
+                    sense_id=sense_record.id,
+                    text=text,
+                    position=note_position,
+                )
+            )
         for gloss_position, gloss in enumerate(sense.glosses, start=1):
             session.add(
                 JmdictGlossRecord(

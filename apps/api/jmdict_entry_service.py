@@ -43,6 +43,18 @@ def load_entries(
     glosses_by_sense = {sense.id: [] for sense in details.senses}
     parts_by_sense = {sense.id: [] for sense in details.senses}
     misc_by_sense = {sense.id: [] for sense in details.senses}
+    fields_by_sense = {sense.id: [] for sense in details.senses}
+    dialects_by_sense = {sense.id: [] for sense in details.senses}
+    notes_by_sense = {sense.id: [] for sense in details.senses}
+
+    for field in details.fields:
+        fields_by_sense[field.sense_id].append(field.label)
+
+    for dialect in details.dialects:
+        dialects_by_sense[dialect.sense_id].append(dialect.label)
+
+    for note in details.notes:
+        notes_by_sense[note.sense_id].append(note.text)
 
     for tag in details.misc:
         misc_by_sense[tag.sense_id].append(tag.label)
@@ -95,6 +107,9 @@ def load_entries(
                 glosses=glosses_by_sense[sense.id],
                 parts_of_speech=parts_by_sense[sense.id],
                 misc=misc_by_sense[sense.id],
+                fields=fields_by_sense[sense.id],
+                dialects=dialects_by_sense[sense.id],
+                notes=notes_by_sense[sense.id],
                 restricted_to_written_forms=[
                     form.text for form in forms if form.id in forms_by_sense[sense.id]
                 ],

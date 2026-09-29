@@ -214,8 +214,18 @@ restrictions.
 Forms include basic affirmative, negative, past, and polite forms;
 connecting, conditional, volitional, imperative, and prohibitive forms;
 and potential, passive, causative, causative-passive, and te-iru groups.
-Derived groups include negative, past, and polite variants.
-Colloquial potential forms such as 出れる and 来れる are labeled separately.
+Derived groups include negative, past, polite, connecting, and conditional
+forms. Auxiliary constructions include te-iru, te-oku, and te-shimau,
+along with their colloquial contractions.
+
+Potential, passive, causative, causative-passive, and colloquial potential
+forms can combine with these auxiliaries. Supported combinations appear
+in conjugation tables and are recognized in Japanese and romaji searches,
+including incomplete input.
+
+Auxiliary combinations are bounded rather than recursively generated.
+Grammatical availability does not guarantee that every combination is
+natural for every word or context.Colloquial potential forms such as 出れる and 来れる are labeled separately.
 
 Search accepts supported inflected forms in Japanese and complete romaji,
 including 食べません, dekakerareru, 書ける, and dereru.
@@ -246,3 +256,20 @@ Search previews show at most four senses with available definitions.
 Word details show all available senses and conjugation tables.
 Cards display usage badges and grammatical labels together, with compact
 spacing and inline alternate spellings.
+
+Word cards display sense-specific usage labels, subject fields, dialects,
+and explanatory notes. Annotations remain attached to their meanings.
+Search previews show at most four senses; word details show all available
+senses.
+
+Existing installations must apply the sense-metadata migration and
+reimport JMdict to populate fields, dialects, and notes:
+
+```bash
+cd apps/api
+uv run --locked alembic upgrade head
+uv run --locked python import_jmdict.py ~/datasets/jmdict/JMdict
+```
+
+Set DATABASE_URL to the intended database before running these commands.
+The migration creates the tables; the reimport populates them.
