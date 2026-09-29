@@ -19,6 +19,11 @@ GROUP_LABELS = {
     "causative_passive": "causative-passive",
     "te_iru": "ている construction",
     "potential_colloquial": "potential — colloquial",
+    "te_iru_colloquial": "ている construction — colloquial",
+    "te_oku": "ておく construction",
+    "te_oku_colloquial": "ておく construction — colloquial",
+    "te_shimau": "てしまう construction",
+    "te_shimau_colloquial": "てしまう construction — colloquial",
 }
 
 
@@ -43,7 +48,8 @@ def _description(candidate: ReverseCandidate) -> str:
     if candidate.group == "basic":
         return form
 
-    group = GROUP_LABELS[candidate.group]
+    group = " → ".join(GROUP_LABELS[part] for part in candidate.group.split("+"))
+
     return group if candidate.form == "nonpast" else f"{group}, {form}"
 
 

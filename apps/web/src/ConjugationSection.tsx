@@ -15,6 +15,11 @@ const GROUP_LABELS: Record<string, string> = {
   causative: 'Causative — make or let',
   causative_passive: 'Causative-passive',
   te_iru: 'ている — ongoing action or resulting state',
+  te_iru_colloquial: 'てる／でる — contracted ている',
+  te_oku: 'ておく — preparation or leaving something as it is',
+  te_oku_colloquial: 'とく／どく — contracted ておく',
+  te_shimau: 'てしまう — completion or unintended result',
+  te_shimau_colloquial: 'ちゃう／じゃう — contracted てしまう',
 }
 
 const FORM_LABELS: Record<string, string> = {
@@ -126,7 +131,11 @@ export default function ConjugationSection({
               )}
           </p>
 
-          {Object.entries(GROUP_LABELS).map(([group, label]) => {
+{Array.from(new Set(table.forms.map((item) => item.group))).map((group) => {
+  const label = group
+    .split('+')
+    .map((part) => GROUP_LABELS[part] ?? part)
+    .join(' → ')
             const forms = table.forms.filter((item) => item.group === group)
 
             if (forms.length === 0) {
