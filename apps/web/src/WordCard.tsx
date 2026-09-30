@@ -12,6 +12,7 @@ import ConjugationMatches from './ConjugationMatches'
 import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 import HighlightedText from './HighlightedText'
 import AnnotatedForm from './AnnotatedForm'
+import DictionaryReferences from './DictionaryReferences'
 
 type WordCardProps = {
   entry: DictionaryEntry
@@ -212,7 +213,11 @@ headingContent
 
             <ol className="sense-list">
               {senses.map((sense) => (
-                <li key={sense.sourcePosition}>
+              <li
+                key={sense.sourcePosition}
+                data-sense-position={sense.sourcePosition + 1}
+                tabIndex={-1}
+              >
                   {(isUsuallyKana(sense) ||
                     sense.usageLabels.length > 0 ||
                     sense.parts_of_speech.length > 0) && (
@@ -281,6 +286,14 @@ headingContent
                       </span>
                     </p>
                   )}
+                                    <DictionaryReferences
+                    label="See also"
+                    references={sense.cross_references ?? []}
+                  />
+                  <DictionaryReferences
+                    label="Antonyms"
+                    references={sense.antonyms ?? []}
+                  />
                 </li>
               ))}
             </ol>

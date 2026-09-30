@@ -715,3 +715,21 @@ mark.search-match,
   line-height: 1.35;
   letter-spacing: normal;
 }
+
+.dictionary-references {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.dictionary-references a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.sense-list > li:focus-visible {
+  outline: 2px solid #e8a0b5;
+  outline-offset: 3px;
+}

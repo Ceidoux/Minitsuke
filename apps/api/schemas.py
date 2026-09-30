@@ -26,6 +26,16 @@ class JmdictReadingResponse(BaseModel):
     info: list[str] = Field(default_factory=list)
 
 
+class JmdictReferenceTargetResponse(BaseModel):
+    source_id: int
+    sense_position: int | None = None
+
+
+class JmdictReferenceResponse(BaseModel):
+    text: str
+    targets: list[JmdictReferenceTargetResponse] = Field(default_factory=list)
+
+
 class JmdictSenseResponse(BaseModel):
     glosses: list[JmdictGlossResponse]
     parts_of_speech: list[str]
@@ -35,6 +45,8 @@ class JmdictSenseResponse(BaseModel):
     fields: list[str] = Field(default_factory=list)
     dialects: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    cross_references: list[JmdictReferenceResponse] = Field(default_factory=list)
+    antonyms: list[JmdictReferenceResponse] = Field(default_factory=list)
 
 
 class JmdictEntryResponse(BaseModel):

@@ -13,6 +13,7 @@ from models import (
     JmdictReadingInfoRecord,
     JmdictReadingRecord,
     JmdictReadingRestrictionRecord,
+    JmdictReferenceRecord,
     JmdictSenseNoteRecord,
     JmdictSenseReadingRestrictionRecord,
     JmdictSenseRecord,
@@ -145,6 +146,19 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
         )
         session.add(sense_record)
         session.flush()
+        for kind, references in (
+            ("xref", sense.cross_references),
+            ("ant", sense.antonyms),
+        ):
+            for position, text in enumerate(references, start=1):
+                session.add(
+                    JmdictReferenceRecord(
+                        sense_id=sense_record.id,
+                        kind=kind,
+                        text=text,
+                        position=position,
+                    )
+                )
         for field_position, label in enumerate(sense.fields, start=1):
             session.add(
                 JmdictFieldRecord(
