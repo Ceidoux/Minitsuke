@@ -408,3 +408,31 @@ class JmdictReadingInfoRecord(Base):
     )
     label: Mapped[str] = mapped_column(Text)
     position: Mapped[int] = mapped_column()
+
+
+class JmdictReferenceRecord(Base):
+    __tablename__ = "jmdict_references"
+    __table_args__ = (
+        UniqueConstraint(
+            "sense_id",
+            "kind",
+            "position",
+            name="uq_jmdict_references_sense_kind_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_references_positive_position",
+        ),
+        CheckConstraint(
+            "kind IN ('xref', 'ant')",
+            name="ck_jmdict_references_kind",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sense_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_senses.id", ondelete="CASCADE"),
+    )
+    kind: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()

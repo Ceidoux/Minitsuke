@@ -281,3 +281,14 @@ while headings prefer ordinary forms when available.
 Existing installations must apply the form-annotation migration and
 reimport JMdict to populate these annotations, using the migration and
 import commands documented above.
+
+Word cards display sense-specific “See also” references and antonyms.
+Resolved links open the target entry and, where specified, its numbered
+sense. Links preserve the current search and selected languages.
+
+References are checked against exact dictionary forms, reading
+restrictions, and sense restrictions. Ambiguous references display
+multiple targets; unresolved references remain visible without a link.
+
+Existing installations must apply the reference-table migration and
+reimport JMdict to populate the references.

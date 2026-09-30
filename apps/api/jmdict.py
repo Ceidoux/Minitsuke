@@ -22,6 +22,8 @@ class JmdictSense:
     fields: tuple[str, ...] = ()
     dialects: tuple[str, ...] = ()
     notes: tuple[str, ...] = ()
+    cross_references: tuple[str, ...] = ()
+    antonyms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -142,6 +144,12 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
                     node.text
                     for node in sense.findall("s_inf")
                     if node.text is not None
+                ),
+                cross_references=tuple(
+                    node.text for node in sense.findall("xref") if node.text is not None
+                ),
+                antonyms=tuple(
+                    node.text for node in sense.findall("ant") if node.text is not None
                 ),
             )
         )

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchDictionaryEntry } from './dictionary-api'
 import type { DictionaryEntry } from './dictionary-api'
 import type { DictionaryLanguageCode } from './dictionary-languages'
@@ -18,6 +18,40 @@ export default function WordDetail({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
+
+    const detailRoot = useRef<HTMLDivElement | null>(null)
+
+  const referenceMatch = window.location.hash.match(
+    /^#entry-([0-9]+)-sense-([0-9]+)$/,
+  )
+
+  const requestedSense =
+    referenceMatch && Number(referenceMatch[1]) === sourceId
+      ? Number(referenceMatch[2])
+      : null
+
+  const targetSense =
+    entry &&
+    requestedSense !== null &&
+    Number.isSafeInteger(requestedSense) &&
+    requestedSense >= 1
+      ? entry.senses[requestedSense - 1]
+      : undefined
+
+  useEffect(() => {
+    if (!entry || !targetSense || requestedSense === null) {
+      return
+    }
+
+    const target = detailRoot.current?.querySelector<HTMLElement>(
+      `[data-sense-position="${requestedSense}"]`,
+    )
+
+    if (target) {
+      target.scrollIntoView?.({ block: 'nearest' })
+      target.focus({ preventScroll: true })
+    }
+  }, [entry, requestedSense, targetSense])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -59,7 +93,7 @@ export default function WordDetail({
   }
 
   return (
-    <div aria-busy={loading}>
+    <div ref={detailRoot} aria-busy={loading}>
       {loading && <p role="status">Loading word details…</p>}
 
       {error && (
@@ -73,6 +107,15 @@ export default function WordDetail({
 
       {entry && (
         <>
+          {requestedSense !== null && (
+            <p className="entry-note" role="status">
+              {!targetSense
+                ? `Referenced sense ${requestedSense} is unavailable.`
+                : targetSense.glosses.length === 0
+                  ? `Referenced sense ${requestedSense} has no definition in the selected languages.`
+                  : `Reference to sense ${requestedSense}.`}
+            </p>
+          )}
           <WordCard entry={entry} />
           <ConjugationSection
             key={entry.source_id}

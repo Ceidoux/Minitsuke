@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from conjugation_service import build_conjugation_tables
 from database import get_session
 from jmdict_entry_service import load_entry_by_source_id
+from jmdict_reference_service import attach_references
 from jmdict_search import search_jmdict
 from schemas import JmdictEntryDetailResponse, JmdictSearchResponse
 from search import normalize_query
@@ -35,13 +36,17 @@ def search(
         ("eng",) if languages is None else tuple(dict.fromkeys(languages))
     )
 
-    return search_jmdict(
+    response = search_jmdict(
         session,
         cleaned_query,
         languages=enabled_languages,
         limit=limit,
         offset=offset,
     )
+
+    attach_references(session, response.results)
+
+    return response
 
 
 @app.get("/api/v1/entries/{source_id}")
@@ -65,7 +70,7 @@ def get_entry(
             status_code=404,
             detail="Dictionary entry not found",
         )
-
+    attach_references(session, [entry])
     tables, incomplete = build_conjugation_tables(entry)
 
     return JmdictEntryDetailResponse(

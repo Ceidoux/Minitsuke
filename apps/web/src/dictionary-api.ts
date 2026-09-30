@@ -10,6 +10,16 @@ export type DictionaryGloss = {
   language: string
 }
 
+export type DictionaryReferenceTarget = {
+  source_id: number
+  sense_position: number | null
+}
+
+export type DictionaryReference = {
+  text: string
+  targets: DictionaryReferenceTarget[]
+}
+
 export type DictionarySense = {
   glosses: DictionaryGloss[]
   parts_of_speech: string[]
@@ -19,6 +29,8 @@ export type DictionarySense = {
   fields?: string[]
   dialects?: string[]
   notes?: string[]
+  cross_references?: DictionaryReference[]
+  antonyms?: DictionaryReference[]
 }
 
 export type ConjugatedForm = {
