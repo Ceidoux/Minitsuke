@@ -203,6 +203,8 @@ class JmdictGlossRecord(Base):
     )
     text: Mapped[str] = mapped_column(Text)
     language: Mapped[str] = mapped_column(Text)
+    gloss_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gender: Mapped[str | None] = mapped_column(Text, nullable=True)
     position: Mapped[int] = mapped_column()
 
 
@@ -435,4 +437,32 @@ class JmdictReferenceRecord(Base):
     )
     kind: Mapped[str] = mapped_column(Text)
     text: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column()
+
+
+class JmdictLoanSourceRecord(Base):
+    __tablename__ = "jmdict_loan_sources"
+    __table_args__ = (
+        UniqueConstraint(
+            "sense_id",
+            "position",
+            name="uq_jmdict_loan_sources_sense_position",
+        ),
+        CheckConstraint(
+            "position > 0",
+            name="ck_jmdict_loan_sources_positive_position",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sense_id: Mapped[int] = mapped_column(
+        ForeignKey("jmdict_senses.id", ondelete="CASCADE"),
+    )
+    text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    language: Mapped[str] = mapped_column(Text)
+    source_type: Mapped[str] = mapped_column(Text)
+    wasei: Mapped[bool] = mapped_column(
+        nullable=False,
+        server_default=false(),
+    )
     position: Mapped[int] = mapped_column()

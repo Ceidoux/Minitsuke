@@ -292,3 +292,14 @@ multiple targets; unresolved references remain visible without a link.
 
 Existing installations must apply the reference-table migration and
 reimport JMdict to populate the references.
+
+Word cards display loanword origins beneath their meanings, including
+source languages, original expressions when supplied, partial sources,
+and Japanese-coined expressions.
+
+Gloss qualifiers appear beside the individual definitions they describe.
+Unknown qualifier values and source-language codes remain visible.
+
+Existing installations must apply the loan-source and gloss-qualifier
+migration and populate the new metadata. A full JMdict reimport is
+currently supported.

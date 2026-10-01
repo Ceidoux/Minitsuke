@@ -13,6 +13,8 @@ import { DICTIONARY_LANGUAGES } from './dictionary-languages'
 import HighlightedText from './HighlightedText'
 import AnnotatedForm from './AnnotatedForm'
 import DictionaryReferences from './DictionaryReferences'
+import GlossText from './GlossText'
+import LoanSources from './LoanSources'
 
 type WordCardProps = {
   entry: DictionaryEntry
@@ -262,8 +264,10 @@ headingContent
                     </div>
                   )}
                   <p lang={language.htmlLang}>
-                    {sense.glosses.map((gloss) => gloss.text).join('; ')}
+                    <GlossText glosses={sense.glosses} />
                   </p>
+
+                  <LoanSources sources={sense.loan_sources ?? []} />
                   {(sense.notes ?? []).map((note, index) => (
                     <p className="entry-note" key={`note-${index}`}>
                       {note}

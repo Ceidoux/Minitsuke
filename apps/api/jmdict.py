@@ -10,6 +10,16 @@ COMMON_PRIORITY_TAGS = frozenset({"news1", "ichi1", "spec1", "spec2", "gai1"})
 class JmdictGloss:
     text: str
     language: str
+    gloss_type: str | None = None
+    gender: str | None = None
+
+
+@dataclass(frozen=True)
+class JmdictLoanSource:
+    text: str | None = None
+    language: str = "eng"
+    source_type: str = "full"
+    wasei: bool = False
 
 
 @dataclass(frozen=True)
@@ -24,6 +34,7 @@ class JmdictSense:
     notes: tuple[str, ...] = ()
     cross_references: tuple[str, ...] = ()
     antonyms: tuple[str, ...] = ()
+    loan_sources: tuple[JmdictLoanSource, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -114,6 +125,8 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
                             "{http://www.w3.org/XML/1998/namespace}lang",
                             "eng",
                         ),
+                        gloss_type=node.get("g_type"),
+                        gender=node.get("g_gend"),
                     )
                     for node in sense.findall("gloss")
                     if node.text is not None
@@ -150,6 +163,18 @@ def parse_entry(element: ET.Element) -> JmdictEntry:
                 ),
                 antonyms=tuple(
                     node.text for node in sense.findall("ant") if node.text is not None
+                ),
+                loan_sources=tuple(
+                    JmdictLoanSource(
+                        text=node.text,
+                        language=node.get(
+                            "{http://www.w3.org/XML/1998/namespace}lang",
+                            "eng",
+                        ),
+                        source_type=node.get("ls_type", "full"),
+                        wasei=node.get("ls_wasei") == "y",
+                    )
+                    for node in sense.findall("lsource")
                 ),
             )
         )

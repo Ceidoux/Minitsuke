@@ -80,15 +80,31 @@ def test_assembles_complete_entry_with_ordered_restrictions(db_session: Session)
         "senses": [
             {
                 "glosses": [
-                    {"text": "school", "language": "eng"},
-                    {"text": "école", "language": "fre"},
-                    {"text": "school", "language": "eng"},
+                    {
+                        "text": "school",
+                        "language": "eng",
+                        "gloss_type": None,
+                        "gender": None,
+                    },
+                    {
+                        "text": "école",
+                        "language": "fre",
+                        "gloss_type": None,
+                        "gender": None,
+                    },
+                    {
+                        "text": "school",
+                        "language": "eng",
+                        "gloss_type": None,
+                        "gender": None,
+                    },
                 ],
                 "parts_of_speech": ["noun", "expression"],
                 "misc": [],
                 "fields": [],
                 "dialects": [],
                 "notes": [],
+                "loan_sources": [],
                 "cross_references": [],
                 "antonyms": [],
                 "restricted_to_written_forms": ["学校", "學校"],
@@ -96,13 +112,19 @@ def test_assembles_complete_entry_with_ordered_restrictions(db_session: Session)
             },
             {
                 "glosses": [
-                    {"text": "academy", "language": "eng"},
+                    {
+                        "text": "academy",
+                        "language": "eng",
+                        "gloss_type": None,
+                        "gender": None,
+                    },
                 ],
                 "parts_of_speech": ["noun"],
                 "misc": [],
                 "fields": [],
                 "dialects": [],
                 "notes": [],
+                "loan_sources": [],
                 "cross_references": [],
                 "antonyms": [],
                 "restricted_to_written_forms": [],
@@ -134,13 +156,19 @@ def test_assembles_kana_only_entry(db_session: Session):
         "senses": [
             {
                 "glosses": [
-                    {"text": "thank you", "language": "eng"},
+                    {
+                        "text": "thank you",
+                        "language": "eng",
+                        "gloss_type": None,
+                        "gender": None,
+                    },
                 ],
                 "parts_of_speech": [],
                 "misc": [],
                 "fields": [],
                 "dialects": [],
                 "notes": [],
+                "loan_sources": [],
                 "cross_references": [],
                 "antonyms": [],
                 "restricted_to_written_forms": [],

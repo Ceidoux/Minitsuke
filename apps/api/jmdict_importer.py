@@ -8,6 +8,7 @@ from models import (
     JmdictEntryRecord,
     JmdictFieldRecord,
     JmdictGlossRecord,
+    JmdictLoanSourceRecord,
     JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
     JmdictReadingInfoRecord,
@@ -146,6 +147,17 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
         )
         session.add(sense_record)
         session.flush()
+        for position, source in enumerate(sense.loan_sources, start=1):
+            session.add(
+                JmdictLoanSourceRecord(
+                    sense_id=sense_record.id,
+                    text=source.text,
+                    language=source.language,
+                    source_type=source.source_type,
+                    wasei=source.wasei,
+                    position=position,
+                )
+            )
         for kind, references in (
             ("xref", sense.cross_references),
             ("ant", sense.antonyms),
@@ -191,6 +203,8 @@ def save_jmdict_entry(session: Session, entry: JmdictEntry) -> int:
                     sense_id=sense_record.id,
                     text=gloss.text,
                     language=gloss.language,
+                    gloss_type=gloss.gloss_type,
+                    gender=gloss.gender,
                     position=gloss_position,
                 )
             )

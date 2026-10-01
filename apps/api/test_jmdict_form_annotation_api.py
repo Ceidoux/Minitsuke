@@ -91,7 +91,12 @@ def test_form_annotations_reach_search_and_details(
             },
         ]
         assert entry["senses"][0]["glosses"] == [
-            {"text": "école", "language": "fre"},
+            {
+                "text": "école",
+                "language": "fre",
+                "gloss_type": None,
+                "gender": None,
+            },
         ]
 
     assert entries[1000002]["written_form_info"] == {}

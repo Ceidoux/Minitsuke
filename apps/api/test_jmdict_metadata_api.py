@@ -54,7 +54,12 @@ def test_metadata_reaches_search_and_details(
         assert first["dialects"] == ["Kansai-ben"]
         assert first["notes"] == ["First note.", "Second note."]
         assert first["glosses"] == [
-            {"text": "essai", "language": "fre"},
+            {
+                "text": "essai",
+                "language": "fre",
+                "gloss_type": None,
+                "gender": None,
+            },
         ]
 
         assert second["fields"] == []

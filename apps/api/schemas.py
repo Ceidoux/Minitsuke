@@ -17,6 +17,8 @@ class SearchResponse(BaseModel):
 class JmdictGlossResponse(BaseModel):
     text: str
     language: str
+    gloss_type: str | None = None
+    gender: str | None = None
 
 
 class JmdictReadingResponse(BaseModel):
@@ -36,6 +38,13 @@ class JmdictReferenceResponse(BaseModel):
     targets: list[JmdictReferenceTargetResponse] = Field(default_factory=list)
 
 
+class JmdictLoanSourceResponse(BaseModel):
+    text: str | None = None
+    language: str
+    source_type: str
+    wasei: bool
+
+
 class JmdictSenseResponse(BaseModel):
     glosses: list[JmdictGlossResponse]
     parts_of_speech: list[str]
@@ -47,6 +56,7 @@ class JmdictSenseResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
     cross_references: list[JmdictReferenceResponse] = Field(default_factory=list)
     antonyms: list[JmdictReferenceResponse] = Field(default_factory=list)
+    loan_sources: list[JmdictLoanSourceResponse] = Field(default_factory=list)
 
 
 class JmdictEntryResponse(BaseModel):

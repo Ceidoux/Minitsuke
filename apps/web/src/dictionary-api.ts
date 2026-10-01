@@ -8,6 +8,8 @@ export type DictionaryReading = {
 export type DictionaryGloss = {
   text: string
   language: string
+  gloss_type?: string | null
+  gender?: string | null
 }
 
 export type DictionaryReferenceTarget = {
@@ -18,6 +20,13 @@ export type DictionaryReferenceTarget = {
 export type DictionaryReference = {
   text: string
   targets: DictionaryReferenceTarget[]
+}
+
+export type DictionaryLoanSource = {
+  text: string | null
+  language: string
+  source_type: string
+  wasei: boolean
 }
 
 export type DictionarySense = {
@@ -31,6 +40,7 @@ export type DictionarySense = {
   notes?: string[]
   cross_references?: DictionaryReference[]
   antonyms?: DictionaryReference[]
+  loan_sources?: DictionaryLoanSource[]
 }
 
 export type ConjugatedForm = {
