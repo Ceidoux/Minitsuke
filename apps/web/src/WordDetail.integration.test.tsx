@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
+import WordDetail from './WordDetail'
 import {
   fetchDictionaryEntry,
   searchDictionary,
@@ -251,4 +252,112 @@ test('retries a failed detail request without repeating the search', async () =>
 
   expect(detailMock).toHaveBeenCalledTimes(2)
   expect(searchMock).toHaveBeenCalledTimes(1)
+})
+
+test.each(['hashchange', 'popstate'])(
+  'updates the target sense on %s without refetching the entry',
+  async (eventName) => {
+    const entry = makeEntry(100, '学校')
+    entry.senses.push({
+      glosses: [{ text: 'school of thought', language: 'eng' }],
+      parts_of_speech: ['noun'],
+      restricted_to_written_forms: [],
+      restricted_to_readings: [],
+    })
+    detailMock.mockResolvedValue(entry)
+
+    window.history.replaceState(
+      null,
+      '',
+      '/?entry=100#entry-100-sense-1',
+    )
+
+    const { container } = render(
+      <WordDetail sourceId={100} languages={['eng']} />,
+    )
+    await settle()
+
+    const firstSense = container.querySelector(
+      '[data-sense-position="1"]',
+    )
+    const secondSense = container.querySelector(
+      '[data-sense-position="2"]',
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Reference to sense 1.',
+    )
+    expect(firstSense).toHaveFocus()
+
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        '/?entry=100#entry-100-sense-2',
+      )
+      window.dispatchEvent(new Event(eventName))
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Reference to sense 2.',
+    )
+    expect(secondSense).toHaveFocus()
+    expect(detailMock).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      window.history.replaceState(
+        null,
+        '',
+        '/?entry=100#entry-100-sense-1',
+      )
+      window.dispatchEvent(new Event(eventName))
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Reference to sense 1.',
+    )
+    expect(firstSense).toHaveFocus()
+    expect(detailMock).toHaveBeenCalledTimes(1)
+  },
+)
+
+test('navigates to an untranslated sense and focuses its metadata', async () => {
+  const entry = makeEntry(100, '学校')
+  entry.senses.push({
+    glosses: [],
+    parts_of_speech: ['noun'],
+    restricted_to_written_forms: [],
+    restricted_to_readings: [],
+    notes: ['A note on the untranslated sense.'],
+  })
+  detailMock.mockResolvedValue(entry)
+
+  window.history.replaceState(
+    null,
+    '',
+    '/?entry=100#entry-100-sense-1',
+  )
+
+  const { container } = render(
+    <WordDetail sourceId={100} languages={['eng']} />,
+  )
+  await settle()
+
+  act(() => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?entry=100#entry-100-sense-2',
+    )
+    window.dispatchEvent(new Event('hashchange'))
+  })
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Referenced sense 2 has no definition in the selected languages.',
+  )
+  expect(screen.getByText('A note on the untranslated sense.'))
+    .toBeVisible()
+  expect(container.querySelector('[data-sense-position="2"]'))
+    .toHaveFocus()
+  expect(detailMock).toHaveBeenCalledTimes(1)
 })

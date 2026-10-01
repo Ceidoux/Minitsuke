@@ -66,22 +66,33 @@ export default function WordCard({
         info={entry.readings.find((reading) => reading.text === title)?.info}
       />
     )
-  const availableSenses = entry.senses
-      .map((sense, sourcePosition) => ({
-        ...sense,
-        sourcePosition,
-        usageLabels: Array.from(new Set(sense.misc ?? []))
-          .filter((label) => label !== USUALLY_KANA),
-      }))
-    .filter((sense) => sense.glosses.length > 0)
+  const availableSenses = entry.senses.map((sense, sourcePosition) => ({
+    ...sense,
+    sourcePosition,
+    usageLabels: Array.from(new Set(sense.misc ?? []))
+      .filter((label) => label !== USUALLY_KANA),
+  }))
+
+  const translatedSenses = availableSenses.filter(
+    (sense) => sense.glosses.length > 0,
+  )
 
   const displayedSenses = compact
-    ? availableSenses.slice(0, 4)
-    : availableSenses
+    ? translatedSenses.slice(0, 4)
+    : translatedSenses
 
-  const hiddenSenseCount = availableSenses.length - displayedSenses.length
+  const hiddenSenseCount = compact
+    ? translatedSenses.length - displayedSenses.length
+    : 0
 
-  const languageGroups = DICTIONARY_LANGUAGES
+  const languageGroups: {
+    language: {
+      code: string
+      htmlLang: string
+      label: string
+    }
+    senses: typeof displayedSenses
+  }[] = DICTIONARY_LANGUAGES
     .map((language) => ({
       language,
       senses: displayedSenses
@@ -94,6 +105,22 @@ export default function WordCard({
         .filter((sense) => sense.glosses.length > 0),
     }))
     .filter((group) => group.senses.length > 0)
+  if (!compact) {
+    const untranslatedSenses = availableSenses.filter(
+      (sense) => sense.glosses.length === 0,
+    )
+
+    if (untranslatedSenses.length > 0) {
+      languageGroups.push({
+        language: {
+          code: 'eng',
+          htmlLang: 'en',
+          label: 'Senses without a translation',
+        },
+        senses: untranslatedSenses,
+      })
+    }
+  }
   return (
 <article
   className={[
@@ -210,13 +237,14 @@ headingContent
         <p>No definitions in the selected languages.</p>
       ) : (
         languageGroups.map(({ language, senses }) => (
-          <section className="definition-language" key={language.code}>
+          <section className="definition-language" key={language.label}>
             <h4 lang={language.htmlLang}>{language.label}</h4>
 
             <ol className="sense-list">
               {senses.map((sense) => (
               <li
                 key={sense.sourcePosition}
+                value={sense.sourcePosition + 1}
                 data-sense-position={sense.sourcePosition + 1}
                 tabIndex={-1}
               >
@@ -263,9 +291,15 @@ headingContent
                       ))}
                     </div>
                   )}
-                  <p lang={language.htmlLang}>
-                    <GlossText glosses={sense.glosses} />
-                  </p>
+                  {sense.glosses.length > 0 ? (
+                    <p lang={language.htmlLang}>
+                      <GlossText glosses={sense.glosses} />
+                    </p>
+                  ) : (
+                    <p className="entry-note">
+                      No definition in the selected languages.
+                    </p>
+                  )}
 
                   <LoanSources sources={sense.loan_sources ?? []} />
                   {(sense.notes ?? []).map((note, index) => (
