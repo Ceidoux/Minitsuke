@@ -1,3 +1,5 @@
+import pytest
+
 from conjugation_service import build_conjugation_tables
 from schemas import (
     JmdictEntryResponse,
@@ -308,3 +310,176 @@ def test_shared_special_suru_table_reports_partial_coverage():
     assert tables[0].verb_class == "vs-s"
     assert any(form.written == "達します" for form in tables[0].forms)
     assert not any(form.group == "potential" for form in tables[0].forms)
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "'ku' adjective (archaic)",
+        "'shiku' adjective (archaic)",
+        "'taru' adjective",
+        "archaic/formal form of na-adjective",
+        "irregular nu verb",
+        "irregular ru verb, plain form ends with -ri",
+        "verb unspecified",
+        "Godan verb with 'u' ending (special class)",
+    ],
+)
+def test_reports_missing_inflection_class_coverage(label):
+    entry = make_entry("仮", "かり", label)
+
+    assert build_conjugation_tables(entry) == ([], True)
+
+
+def test_preserves_supported_tables_when_another_sense_is_unsupported():
+    entry = make_entry("食べる", "たべる", "Ichidan verb")
+    unsupported_sense = entry.senses[0].model_copy(deep=True)
+    unsupported_sense.parts_of_speech = ["irregular nu verb"]
+    entry.senses.append(unsupported_sense)
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is True
+    assert len(tables) == 1
+    assert tables[0].sense_positions == [1]
+    assert any(form.written == "食べました" for form in tables[0].forms)
+
+
+def test_display_tables_exclude_search_only_written_form():
+    entry = make_entry("食べる", "たべる", "Ichidan verb")
+    entry.written_forms.append("喰べる")
+    # Synthetic annotation to isolate the filtering behavior.
+    entry.written_form_info["喰べる"] = ["search-only kanji form"]
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert [table.written for table in tables] == ["食べる"]
+
+    lookup_tables, _ = build_conjugation_tables(
+        entry,
+        include_search_only=True,
+    )
+
+    assert {table.written for table in lookup_tables} == {"食べる", "喰べる"}
+    assert any(
+        form.written == "喰べました" for table in lookup_tables for form in table.forms
+    )
+
+
+def test_display_tables_exclude_search_only_reading():
+    entry = make_entry("食べる", "たべる", "Ichidan verb")
+    # Synthetic annotation; the ordinary reading is marked only for this test.
+    entry.readings[0].info = ["search-only kana form"]
+
+    assert build_conjugation_tables(entry) == ([], False)
+
+    tables, incomplete = build_conjugation_tables(
+        entry,
+        include_search_only=True,
+    )
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert any(form.reading == "たべました" for form in tables[0].forms)
+
+
+def test_search_only_filter_preserves_reading_restrictions():
+    entry = make_entry("食べる", "たべる", "Ichidan verb")
+    entry.written_forms.append("喰べる")
+    entry.written_form_info["喰べる"] = ["search-only kanji form"]
+    entry.readings[0].restricted_to = ["喰べる"]
+
+    # Do not attach the reading to the remaining, incompatible spelling.
+    assert build_conjugation_tables(entry) == ([], False)
+
+    tables, _ = build_conjugation_tables(
+        entry,
+        include_search_only=True,
+    )
+
+    assert [table.written for table in tables] == ["喰べる"]
+
+
+def test_rare_written_form_remains_in_display_tables():
+    entry = make_entry("食べる", "たべる", "Ichidan verb")
+    entry.written_form_info["食べる"] = ["rarely used kanji form"]
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert [table.written for table in tables] == ["食べる"]
+
+
+@pytest.mark.parametrize(
+    ("written", "reading", "past"),
+    [
+        ("可憐しい", "いじらしい", "いじらしかった"),
+        ("行けない", "いけない", "いけなかった"),
+    ],
+)
+def test_uses_kana_when_only_written_form_is_search_only(
+    written,
+    reading,
+    past,
+):
+    entry = make_entry(written, reading, "adjective (keiyoushi)")
+    entry.written_form_info[written] = ["search-only kanji form"]
+    entry.senses.append(entry.senses[0].model_copy(deep=True))
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert len(tables) == 1
+    assert tables[0].written == reading
+    assert tables[0].reading == reading
+    assert tables[0].sense_positions == [1, 2]
+    assert any(form.written == past for form in tables[0].forms)
+
+    lookup_tables, _ = build_conjugation_tables(
+        entry,
+        include_search_only=True,
+    )
+
+    assert [table.written for table in lookup_tables] == [written]
+
+
+def test_kana_fallback_excludes_search_only_reading():
+    entry = make_entry("行けない", "いけない", "adjective (keiyoushi)")
+    entry.written_form_info["行けない"] = ["search-only kanji form"]
+    entry.readings.append(
+        JmdictReadingResponse(
+            text="イケない",
+            no_kanji=False,
+            restricted_to=[],
+            info=["search-only kana form"],
+        )
+    )
+
+    tables, incomplete = build_conjugation_tables(entry)
+
+    assert incomplete is False
+    assert [(table.written, table.reading) for table in tables] == [
+        ("いけない", "いけない"),
+    ]
+
+
+@pytest.mark.parametrize("restriction", ["reading", "sense"])
+def test_kana_fallback_does_not_bypass_written_restrictions(restriction):
+    entry = make_entry("可憐しい", "いじらしい", "adjective (keiyoushi)")
+    entry.written_form_info["可憐しい"] = ["search-only kanji form"]
+
+    if restriction == "reading":
+        entry.readings[0].restricted_to = ["可憐しい"]
+    else:
+        entry.senses[0].restricted_to_written_forms = ["可憐しい"]
+
+    assert build_conjugation_tables(entry) == ([], False)
+
+
+def test_kana_fallback_respects_sense_reading_restriction():
+    entry = make_entry("可憐しい", "いじらしい", "adjective (keiyoushi)")
+    entry.written_form_info["可憐しい"] = ["search-only kanji form"]
+    entry.senses[0].restricted_to_readings = ["別の読み"]
+
+    assert build_conjugation_tables(entry) == ([], False)
