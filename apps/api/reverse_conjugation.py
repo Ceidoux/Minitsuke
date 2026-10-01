@@ -29,69 +29,6 @@ def _reverse_rules() -> tuple[ReverseRule, ...]:
     # The marker stands for the unchanged beginning of a verb.
     marker = "仮"
 
-    patterns = [
-        ("v1", "る"),
-        ("v1-s", "くれる"),
-        ("v1-s", "呉れる"),
-        ("vz", "ずる"),
-        ("v5aru", "る"),
-        ("v5r-i", "ある"),
-        ("v5r-i", "有る"),
-        ("v5r-i", "在る"),
-        *((verb_class, endings[0]) for verb_class, endings in GODAN_ENDINGS.items()),
-        ("vs-i", "する"),
-        ("vk", "くる"),
-        ("vk", "来る"),
-    ]
-
-    rules = []
-
-    for verb_class, dictionary_ending in patterns:
-        template = marker + dictionary_ending
-
-        # We only use the written output here. Kana and kanji kuru
-        # templates are handled separately.
-        generated = conjugate_verb(template, template, verb_class)
-
-        for item in generated:
-            if item.group == "basic" and item.form == "nonpast":
-                continue
-
-            if not item.written.startswith(marker):
-                raise ValueError("Conjugation rule changed the template stem")
-
-            surface_ending = item.written[len(marker) :]
-
-            if not surface_ending:
-                raise ValueError("Conjugation rule produced an empty ending")
-
-            rules.append(
-                ReverseRule(
-                    surface_ending=surface_ending,
-                    dictionary_ending=dictionary_ending,
-                    verb_class=verb_class,
-                    group=item.group,
-                    form=item.form,
-                )
-            )
-
-    return tuple(
-        sorted(
-            rules,
-            key=lambda rule: (
-                -len(rule.surface_ending),
-                rule.verb_class,
-                rule.group,
-                rule.form,
-            ),
-        )
-    )
-
-
-@lru_cache(maxsize=1)
-def _reverse_rules() -> tuple[ReverseRule, ...]:
-    marker = "仮"
-
     verb_patterns = [
         ("v1", "る"),
         ("v1-s", "くれる"),
@@ -228,6 +165,20 @@ def reverse_conjugate(text: str) -> tuple[ReverseCandidate, ...]:
     return tuple(candidates)
 
 
+@lru_cache(maxsize=1)
+def _reverse_prefix_index() -> dict[str, tuple[tuple[int, ReverseRule], ...]]:
+    rules_by_prefix: dict[str, list[tuple[int, ReverseRule]]] = {}
+
+    for order, rule in enumerate((*_reverse_rules(), *_adjective_reverse_rules())):
+        # Include an empty ending for bare stems, but leave at least
+        # one character of the generated ending untyped.
+        for typed_length in range(len(rule.surface_ending)):
+            prefix = rule.surface_ending[:typed_length]
+            rules_by_prefix.setdefault(prefix, []).append((order, rule))
+
+    return {prefix: tuple(rules) for prefix, rules in rules_by_prefix.items()}
+
+
 def reverse_conjugate_prefix(text: str) -> tuple[ReverseCandidate, ...]:
     cleaned = normalize_written_form(text.strip())
 
@@ -246,45 +197,36 @@ def reverse_conjugate_prefix(text: str) -> tuple[ReverseCandidate, ...]:
             for candidate in surface_candidates:
                 candidates[candidate] = None
 
-    rules = (*_reverse_rules(), *_adjective_reverse_rules())
+    index = _reverse_prefix_index()
+    matching_rules = []
 
-    for rule in rules:
-        # Require at least one character of the generated ending
-        # to remain untyped.
-        maximum_typed_length = min(
-            len(cleaned),
-            len(rule.surface_ending) - 1,
+    for typed_length in range(len(cleaned) + 1):
+        typed_ending = cleaned[-typed_length:] if typed_length else ""
+        matching_rules.extend(
+            (order, typed_length, rule) for order, rule in index.get(typed_ending, ())
         )
 
-        for typed_length in range(maximum_typed_length + 1):
-            if typed_length == 0:
-                # The user may have typed only the stem: 食べ.
-                stem = cleaned
-            else:
-                typed_ending = rule.surface_ending[:typed_length]
+    # Restore rule order, then typed length, to preserve candidate ordering.
+    for _, typed_length, rule in sorted(matching_rules):
+        stem = cleaned[:-typed_length] if typed_length else cleaned
 
-                if not cleaned.endswith(typed_ending):
-                    continue
+        if not stem and rule.verb_class not in {
+            "vs-i",
+            "vk",
+            "adj-ix",
+            "v1-s",
+            "v5r-i",
+            "vs-s-aisu",
+        }:
+            continue
 
-                stem = cleaned[:-typed_length]
-
-            if not stem and rule.verb_class not in {
-                "vs-i",
-                "vk",
-                "adj-ix",
-                "v1-s",
-                "v5r-i",
-                "vs-s-aisu",
-            }:
-                continue
-
-            candidate = ReverseCandidate(
-                dictionary_form=stem + rule.dictionary_ending,
-                verb_class=rule.verb_class,
-                group=rule.group,
-                form=rule.form,
-            )
-            candidates[candidate] = None
+        candidate = ReverseCandidate(
+            dictionary_form=stem + rule.dictionary_ending,
+            verb_class=rule.verb_class,
+            group=rule.group,
+            form=rule.form,
+        )
+        candidates[candidate] = None
 
     return tuple(candidates)
 
