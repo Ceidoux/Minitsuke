@@ -66,13 +66,19 @@ def test_search_returns_complete_entry(
                 "senses": [
                     {
                         "glosses": [
-                            {"text": "school", "language": "eng"},
+                            {
+                                "text": "school",
+                                "language": "eng",
+                                "gloss_type": None,
+                                "gender": None,
+                            },
                         ],
                         "parts_of_speech": ["noun"],
                         "misc": [],
                         "fields": [],
                         "dialects": [],
                         "notes": [],
+                        "loan_sources": [],
                         "cross_references": [],
                         "antonyms": [],
                         "restricted_to_written_forms": [],
@@ -173,8 +179,18 @@ def test_repeated_language_parameters_control_search_and_display(
     entry = multilingual.json()["results"][0]
     assert entry["source_id"] == 100
     assert entry["senses"][0]["glosses"] == [
-        {"text": "school", "language": "eng"},
-        {"text": "école", "language": "fre"},
+        {
+            "text": "school",
+            "language": "eng",
+            "gloss_type": None,
+            "gender": None,
+        },
+        {
+            "text": "école",
+            "language": "fre",
+            "gloss_type": None,
+            "gender": None,
+        },
     ]
 
 
@@ -277,13 +293,19 @@ def test_entry_detail_defaults_to_english(
         "senses": [
             {
                 "glosses": [
-                    {"text": "school", "language": "eng"},
+                    {
+                        "text": "school",
+                        "language": "eng",
+                        "gloss_type": None,
+                        "gender": None,
+                    },
                 ],
                 "parts_of_speech": ["noun"],
                 "misc": [],
                 "fields": [],
                 "dialects": [],
                 "notes": [],
+                "loan_sources": [],
                 "cross_references": [],
                 "antonyms": [],
                 "restricted_to_written_forms": [],
@@ -308,8 +330,18 @@ def test_entry_detail_supports_multiple_languages(
 
     assert response.status_code == 200
     assert response.json()["senses"][0]["glosses"] == [
-        {"text": "school", "language": "eng"},
-        {"text": "école", "language": "fre"},
+        {
+            "text": "school",
+            "language": "eng",
+            "gloss_type": None,
+            "gender": None,
+        },
+        {
+            "text": "école",
+            "language": "fre",
+            "gloss_type": None,
+            "gender": None,
+        },
     ]
 
 
@@ -324,7 +356,12 @@ def test_entry_detail_can_exclude_english(
 
     assert response.status_code == 200
     assert response.json()["senses"][0]["glosses"] == [
-        {"text": "école", "language": "fre"},
+        {
+            "text": "école",
+            "language": "fre",
+            "gloss_type": None,
+            "gender": None,
+        },
     ]
 
 

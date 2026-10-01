@@ -9,6 +9,7 @@ from jmdict_entry_repository import (
 from schemas import (
     JmdictEntryResponse,
     JmdictGlossResponse,
+    JmdictLoanSourceResponse,
     JmdictReadingResponse,
     JmdictSenseResponse,
 )
@@ -53,6 +54,17 @@ def load_entries(
     fields_by_sense = {sense.id: [] for sense in details.senses}
     dialects_by_sense = {sense.id: [] for sense in details.senses}
     notes_by_sense = {sense.id: [] for sense in details.senses}
+    loan_sources_by_sense = {sense.id: [] for sense in details.senses}
+
+    for source in details.loan_sources:
+        loan_sources_by_sense[source.sense_id].append(
+            JmdictLoanSourceResponse(
+                text=source.text,
+                language=source.language,
+                source_type=source.source_type,
+                wasei=source.wasei,
+            )
+        )
 
     for field in details.fields:
         fields_by_sense[field.sense_id].append(field.label)
@@ -71,6 +83,8 @@ def load_entries(
             JmdictGlossResponse(
                 text=gloss.text,
                 language=gloss.language,
+                gloss_type=gloss.gloss_type,
+                gender=gloss.gender,
             )
         )
 
@@ -118,6 +132,7 @@ def load_entries(
                 fields=fields_by_sense[sense.id],
                 dialects=dialects_by_sense[sense.id],
                 notes=notes_by_sense[sense.id],
+                loan_sources=loan_sources_by_sense[sense.id],
                 restricted_to_written_forms=[
                     form.text for form in forms if form.id in forms_by_sense[sense.id]
                 ],

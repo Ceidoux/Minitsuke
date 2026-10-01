@@ -21,14 +21,25 @@ def test_response_preserves_senses_languages_and_restrictions():
                 "senses": [
                     {
                         "glosses": [
-                            {"text": "school", "language": "eng"},
-                            {"text": "école", "language": "fre"},
+                            {
+                                "text": "school",
+                                "language": "eng",
+                                "gloss_type": None,
+                                "gender": None,
+                            },
+                            {
+                                "text": "école",
+                                "language": "fre",
+                                "gloss_type": None,
+                                "gender": None,
+                            },
                         ],
                         "parts_of_speech": ["noun"],
                         "misc": [],
                         "fields": [],
                         "dialects": [],
                         "notes": [],
+                        "loan_sources": [],
                         "cross_references": [],
                         "antonyms": [],
                         "restricted_to_written_forms": ["学校"],
@@ -36,13 +47,19 @@ def test_response_preserves_senses_languages_and_restrictions():
                     },
                     {
                         "glosses": [
-                            {"text": "academy", "language": "eng"},
+                            {
+                                "text": "academy",
+                                "language": "eng",
+                                "gloss_type": None,
+                                "gender": None,
+                            },
                         ],
                         "parts_of_speech": ["noun"],
                         "misc": [],
                         "fields": [],
                         "dialects": [],
                         "notes": [],
+                        "loan_sources": [],
                         "cross_references": [],
                         "antonyms": [],
                         "restricted_to_written_forms": [],

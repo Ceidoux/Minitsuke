@@ -733,3 +733,16 @@ mark.search-match,
   outline: 2px solid #e8a0b5;
   outline-offset: 3px;
 }
+
+.gloss-qualifier {
+  font-size: 0.8em;
+  font-weight: 400;
+}
+
+.loan-sources {
+  overflow-wrap: anywhere;
+}
+
+.loan-source-text {
+  font-style: italic;
+}

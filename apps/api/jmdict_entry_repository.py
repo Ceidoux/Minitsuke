@@ -8,6 +8,7 @@ from models import (
     JmdictEntryRecord,
     JmdictFieldRecord,
     JmdictGlossRecord,
+    JmdictLoanSourceRecord,
     JmdictMiscRecord,
     JmdictPartOfSpeechRecord,
     JmdictReadingInfoRecord,
@@ -115,6 +116,7 @@ class SenseDetails:
     fields: tuple[JmdictFieldRecord, ...] = ()
     dialects: tuple[JmdictDialectRecord, ...] = ()
     notes: tuple[JmdictSenseNoteRecord, ...] = ()
+    loan_sources: tuple[JmdictLoanSourceRecord, ...] = ()
 
 
 def load_sense_details(
@@ -215,6 +217,19 @@ def load_sense_details(
             JmdictSenseNoteRecord.position,
         )
     ).all()
+    loan_sources = session.scalars(
+        select(JmdictLoanSourceRecord)
+        .join(
+            JmdictSenseRecord,
+            JmdictSenseRecord.id == JmdictLoanSourceRecord.sense_id,
+        )
+        .where(JmdictSenseRecord.entry_id.in_(entry_ids))
+        .order_by(
+            JmdictSenseRecord.entry_id,
+            JmdictSenseRecord.position,
+            JmdictLoanSourceRecord.position,
+        )
+    ).all()
     return SenseDetails(
         senses=tuple(senses),
         glosses=tuple(glosses),
@@ -223,6 +238,7 @@ def load_sense_details(
         fields=tuple(fields),
         dialects=tuple(dialects),
         notes=tuple(notes),
+        loan_sources=tuple(loan_sources),
     )
 
 
