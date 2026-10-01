@@ -36,15 +36,38 @@ ADJECTIVE_CLASSES = {
 
 SURU_NOUN = "noun or participle which takes the aux. verb suru"
 SURU_SPECIAL = "suru verb - special class"
+UNSUPPORTED_INFLECTING_CLASSES = frozenset(
+    {
+        "'ku' adjective (archaic)",
+        "'shiku' adjective (archaic)",
+        "'taru' adjective",
+        "archaic/formal form of na-adjective",
+        "irregular nu verb",
+        "irregular ru verb, plain form ends with -ri",
+        "verb unspecified",
+    }
+)
 
 
 def _sense_pairs(
     entry: JmdictEntryResponse,
     sense: JmdictSenseResponse,
+    *,
+    include_search_only: bool = False,
 ) -> list[tuple[str, str]]:
     pairs = []
 
+    written_forms = [
+        written
+        for written in entry.written_forms
+        if include_search_only
+        or "search-only kanji form" not in entry.written_form_info.get(written, [])
+    ]
+
     for reading in entry.readings:
+        if not include_search_only and "search-only kana form" in reading.info:
+            continue
+
         if (
             sense.restricted_to_readings
             and reading.text not in sense.restricted_to_readings
@@ -56,7 +79,12 @@ def _sense_pairs(
                 pairs.append((reading.text, normalize_reading(reading.text)))
             continue
 
-        for written in entry.written_forms:
+        if not written_forms:
+            if not reading.restricted_to and not sense.restricted_to_written_forms:
+                pairs.append((reading.text, normalize_reading(reading.text)))
+            continue
+
+        for written in written_forms:
             if reading.restricted_to and written not in reading.restricted_to:
                 continue
 
@@ -73,12 +101,18 @@ def _sense_pairs(
 
 def build_conjugation_tables(
     entry: JmdictEntryResponse,
+    *,
+    include_search_only: bool = False,
 ) -> tuple[list[ConjugationTableResponse], bool]:
     tables: dict[tuple[str, str, str], ConjugationTableResponse] = {}
     incomplete = False
 
     for position, sense in enumerate(entry.senses, start=1):
-        pairs = _sense_pairs(entry, sense)
+        pairs = _sense_pairs(
+            entry,
+            sense,
+            include_search_only=include_search_only,
+        )
 
         if "copula" in sense.parts_of_speech:
             for written, reading in pairs:
@@ -114,7 +148,7 @@ def build_conjugation_tables(
                 and label not in ADJECTIVE_CLASSES
                 and label not in {SURU_NOUN, SURU_SPECIAL}
             ):
-                if label.startswith(
+                if label in UNSUPPORTED_INFLECTING_CLASSES or label.startswith(
                     (
                         "Ichidan verb",
                         "Godan verb",
