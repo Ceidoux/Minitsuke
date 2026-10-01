@@ -19,9 +19,26 @@ export default function WordDetail({
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
 
-    const detailRoot = useRef<HTMLDivElement | null>(null)
+  const detailRoot = useRef<HTMLDivElement | null>(null)
+  const [locationHash, setLocationHash] = useState(
+    () => window.location.hash,
+  )
 
-  const referenceMatch = window.location.hash.match(
+  useEffect(() => {
+    function syncLocationHash() {
+      setLocationHash(window.location.hash)
+    }
+
+    window.addEventListener('hashchange', syncLocationHash)
+    window.addEventListener('popstate', syncLocationHash)
+
+    return () => {
+      window.removeEventListener('hashchange', syncLocationHash)
+      window.removeEventListener('popstate', syncLocationHash)
+    }
+  }, [])
+
+  const referenceMatch = locationHash.match(
     /^#entry-([0-9]+)-sense-([0-9]+)$/,
   )
 
