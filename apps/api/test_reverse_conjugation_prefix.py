@@ -1,9 +1,14 @@
 import pytest
 
+from japanese_text import normalize_written_form
 from reverse_conjugation import (
     ReverseCandidate,
+    _adjective_reverse_rules,
+    _copula_reverse_index,
+    _reverse_rules,
     reverse_conjugate_prefix,
 )
+from romaji import interpret_romaji
 
 
 @pytest.mark.parametrize(
@@ -112,3 +117,122 @@ def test_prefix_candidates_are_unique():
 )
 def test_rejects_invalid_prefix_input(query: str):
     assert reverse_conjugate_prefix(query) == ()
+
+
+def _scan_prefix_candidates(text: str) -> tuple[ReverseCandidate, ...]:
+    """Keep the original rule scan as an independent regression oracle."""
+    cleaned = normalize_written_form(text.strip())
+    candidates: dict[ReverseCandidate, None] = {}
+
+    for surface, surface_candidates in _copula_reverse_index().items():
+        if surface != cleaned and surface.startswith(cleaned):
+            candidates.update(dict.fromkeys(surface_candidates))
+
+    for rule in (*_reverse_rules(), *_adjective_reverse_rules()):
+        maximum_typed_length = min(len(cleaned), len(rule.surface_ending) - 1)
+
+        for typed_length in range(maximum_typed_length + 1):
+            if typed_length and not cleaned.endswith(
+                rule.surface_ending[:typed_length]
+            ):
+                continue
+
+            stem = cleaned[:-typed_length] if typed_length else cleaned
+
+            if not stem and rule.verb_class not in {
+                "vs-i",
+                "vk",
+                "adj-ix",
+                "v1-s",
+                "v5r-i",
+                "vs-s-aisu",
+            }:
+                continue
+
+            candidates[
+                ReverseCandidate(
+                    dictionary_form=stem + rule.dictionary_ending,
+                    verb_class=rule.verb_class,
+                    group=rule.group,
+                    form=rule.form,
+                )
+            ] = None
+
+    return tuple(candidates)
+
+
+@pytest.mark.parametrize(
+    "query",
+    tuple(
+        dict.fromkeys(
+            (
+                "食べ",
+                "食べま",
+                " 食べま ",
+                "タベマ",
+                "ﾀﾍﾞﾏ",
+                "高くな",
+                "たかくない",
+                "よかっ",
+                "かっこよかっ",
+                "静かじゃな",
+                "書けま",
+                "行かなかっ",
+                "来られま",
+                "くれ",
+                "ございま",
+                "ありませ",
+                "愛しま",
+                "あいさな",
+                "論じま",
+                "食べさせられま",
+                "食べられちゃっ",
+                "食べさせておきま",
+                "ではありませ",
+                "だ",
+                "で",
+                "し",
+                "く",
+                "よ",
+                "ま",
+                "ます",
+                "ぬ",
+                "あ" * 1000,
+                *(
+                    prefix
+                    for romaji in ("tabemas", "takakun", "shizukajan")
+                    for prefix in interpret_romaji(romaji).completion_prefixes
+                ),
+            )
+        )
+    ),
+)
+def test_index_preserves_all_candidates_and_their_order(query: str):
+    assert reverse_conjugate_prefix(query) == _scan_prefix_candidates(query)
+
+
+def test_index_matches_scan_at_each_partial_ending_length():
+    representative_rules = (
+        ("v1", "basic", "polite_negative_past"),
+        ("v5k", "potential", "polite"),
+        ("vs-s-aisu", "basic", "negative"),
+        ("vk", "basic", "polite"),
+        ("adj-ix", "basic", "past"),
+        ("adj-na", "basic", "negative_colloquial"),
+    )
+    rules = (*_reverse_rules(), *_adjective_reverse_rules())
+
+    for verb_class, group, form in representative_rules:
+        rule = next(
+            rule
+            for rule in rules
+            if (rule.verb_class, rule.group, rule.form) == (verb_class, group, form)
+        )
+        for typed_length in range(len(rule.surface_ending) + 1):
+            # Check both an ordinary stem and an empty standalone stem.
+            for stem in ("仮", ""):
+                query = stem + rule.surface_ending[:typed_length]
+                if query:
+                    assert reverse_conjugate_prefix(query) == _scan_prefix_candidates(
+                        query
+                    )

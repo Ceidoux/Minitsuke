@@ -92,7 +92,10 @@ def find_generated_inflections(
         return (), {}
 
     tables_by_source = {
-        entry.source_id: build_conjugation_tables(entry)[0]
+        entry.source_id: build_conjugation_tables(
+            entry,
+            include_search_only=True,
+        )[0]
         for entry in load_entries(session, entry_ids)
     }
 
@@ -224,7 +227,10 @@ def find_conjugation_completions(
         return (), {}
 
     tables_by_source = {
-        entry.source_id: build_conjugation_tables(entry)[0]
+        entry.source_id: build_conjugation_tables(
+            entry,
+            include_search_only=True,
+        )[0]
         for entry in load_entries(session, entry_ids)
     }
 
@@ -235,12 +241,15 @@ def find_conjugation_completions(
     ] = {}
 
     for candidate, possible_prefixes in candidate_prefixes.items():
-        base = normalize_written_form(candidate.dictionary_form)
+        base = None
 
         for lookup_form in _lookup_forms(candidate):
             for match in matches_by_form.get(lookup_form, ()):
                 if match.source_id in excluded:
                     continue
+
+                if base is None:
+                    base = normalize_written_form(candidate.dictionary_form)
 
                 for table in tables_by_source.get(match.source_id, ()):
                     if table.verb_class != candidate.verb_class:
