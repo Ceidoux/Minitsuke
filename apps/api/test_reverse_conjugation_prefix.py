@@ -207,11 +207,11 @@ def _scan_prefix_candidates(text: str) -> tuple[ReverseCandidate, ...]:
         )
     ),
 )
-def test_index_preserves_all_candidates_and_their_order(query: str):
+def test_prefix_lookup_preserves_all_candidates_and_their_order(query: str):
     assert reverse_conjugate_prefix(query) == _scan_prefix_candidates(query)
 
 
-def test_index_matches_scan_at_each_partial_ending_length():
+def test_prefix_lookup_matches_scan_at_each_partial_ending_length():
     representative_rules = (
         ("v1", "basic", "polite_negative_past"),
         ("v5k", "potential", "polite"),
